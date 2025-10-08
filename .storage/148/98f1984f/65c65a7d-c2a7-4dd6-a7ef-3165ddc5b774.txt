@@ -1,0 +1,20 @@
+$ cd /workspace/backend && python test_api.py
+Traceback (most recent call last):
+  File "/workspace/backend/test_api.py", line 9, in <module>
+    from app.main import app
+  File "/workspace/backend/app/main.py", line 15, in <module>
+    from app.core.config import settings
+  File "/workspace/backend/app/core/config.py", line 8, in <module>
+    from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator
+  File "/data/.cache/python/lib/python3.10/site-packages/pydantic/__init__.py", line 363, in __getattr__
+    return _getattr_migration(attr_name)
+  File "/data/.cache/python/lib/python3.10/site-packages/pydantic/_migration.py", line 296, in wrapper
+    raise PydanticImportError(
+pydantic.errors.PydanticImportError: `BaseSettings` has been moved to the `pydantic-settings` package. See https://docs.pydantic.dev/2.5/migration/#basesettings-has-moved-to-pydantic-settings for more details.
+
+For further information visit https://errors.pydantic.dev/2.5/u/import-error
+$ cd /workspace/backend && pip install redis==5.0.1 celery==5.3.4 flower==2.0.1
+
+bash: /data/.cache/python/bin/pip: /workspace/routix-platform/backend/venv/bin/python3: bad interpreter: No such file or directory
+$ chmod +x /workspace/backend/scripts/start_celery.sh
+

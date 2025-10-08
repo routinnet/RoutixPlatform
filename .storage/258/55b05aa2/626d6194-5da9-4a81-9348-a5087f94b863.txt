@@ -1,0 +1,69 @@
+$ cd /workspace/frontend && npm install
+
+up to date, audited 451 packages in 3s
+
+154 packages are looking for funding
+  run `npm fund` for details
+
+1 critical severity vulnerability
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+$ cd /workspace/frontend && npm run build
+
+
+> routix-frontend@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./app/page.tsx
+Attempted import error: '@/components/chat/ChatInterface' does not contain a default export (imported as 'ChatInterface').
+
+Import trace for requested module:
+./app/page.tsx
+
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./app/page.tsx:1:8
+Type error: Module '"/workspace/frontend/components/chat/ChatInterface"' has no default export. Did you mean to use 'import { ChatInterface } from "/workspace/frontend/components/chat/ChatInterface"' instead?
+
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m [33mChatInterface[39m [36mfrom[39m [32m'@/components/chat/ChatInterface'[39m[0m
+[0m [90m   |[39m        [31m[1m^[22m[39m[0m
+[0m [90m 2 |[39m[0m
+[0m [90m 3 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mHomePage[39m() {[0m
+[0m [90m 4 |[39m   [36mreturn[39m [33m<[39m[33mChatInterface[39m [33m/[39m[33m>[39m[0m
+$ cd /workspace/frontend && npm run build
+
+
+> routix-frontend@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./components/chat/ChatInterface.tsx:131:49
+Type error: Type 'Message' is not assignable to type '{ id: string; content: string; type: "user" | "system" | "result"; timestamp: string; status?: "sending" | "sent" | "completed" | "processing" | "failed" | undefined; progress?: number | undefined; result?: { ...; } | undefined; }'.
+  Types of property 'timestamp' are incompatible.
+    Type 'Date' is not assignable to type 'string'.
+
+[0m [90m 129 |[39m             [33m<[39m[33mAnimatePresence[39m[33m>[39m[0m
+[0m [90m 130 |[39m               {messages[33m.[39mmap((message) [33m=>[39m ([0m
+[0m[31m[1m>[22m[39m[90m 131 |[39m                 [33m<[39m[33mMessageBubble[39m key[33m=[39m{message[33m.[39mid} message[33m=[39m{message} [33m/[39m[33m>[39m[0m
+[0m [90m     |[39m                                                 [31m[1m^[22m[39m[0m
+[0m [90m 132 |[39m               ))}[0m
+[0m [90m 133 |[39m             [33m<[39m[33m/[39m[33mAnimatePresence[39m[33m>[39m[0m
+[0m [90m 134 |[39m           [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m

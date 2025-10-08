@@ -1,0 +1,116 @@
+$ cd /workspace/frontend && npm run build
+
+> routix-frontend@0.1.0 build
+> next build
+
+sh: 1: next: not found
+$ cd /workspace/frontend && ls -la
+
+total 428563
+drwxr-xr-x   78 root root  65302528 Oct  8 04:49 .
+drwxr-xr-x 1059 root root 308273152 Oct  8 10:38 ..
+-rw-r--r--    1 root root       199 Oct  8 03:39 .env.local
+drwxr-xr-x   49 root root  64946176 Oct  8 04:36 .next
+drwxr-xr-x    6 root root     20480 Oct  8 04:32 app
+drwxr-xr-x    9 root root     45056 Oct  8 04:32 components
+drwxr-xr-x    3 root root      8192 Oct  8 04:32 hooks
+drwxr-xr-x    5 root root     16384 Oct  8 03:49 lib
+-rw-r--r--    1 root root       201 Oct  8 04:36 next-env.d.ts
+-rw-r--r--    1 root root       137 Oct  8 04:32 next.config.js
+drwxr-xr-x    2 root root      4096 Oct  8 04:49 node_modules
+-rw-r--r--    1 root root    226112 Oct  8 04:35 package-lock.json
+-rw-r--r--    1 root root      1015 Oct  8 04:35 package.json
+-rw-r--r--    1 root root        81 Oct  8 03:49 postcss.config.js
+-rw-r--r--    1 root root      1171 Oct  8 03:39 tailwind.config.ts
+-rw-r--r--    1 root root       611 Oct  8 03:49 tsconfig.json
+$ cd /workspace/frontend && cat package.json
+
+{
+  "name": "routix-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "axios": "^1.6.0",
+    "clsx": "^2.0.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "framer-motion": "^10.16.0",
+    "lucide-react": "^0.292.0",
+    "next": "^14.2.5",
+    "next-auth": "^4.24.0",
+    "postcss": "^8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.2.0",
+    "react-hook-form": "^7.47.0",
+    "recharts": "^2.8.0",
+    "socket.io-client": "^4.7.0",
+    "sonner": "^1.2.0",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss": "^3.3.0",
+    "zod": "^3.22.0",
+    "zustand": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.19",
+    "@types/react": "18.3.26",
+    "@types/react-dom": "^18",
+    "typescript": "5.9.3"
+  }
+}
+$ cd /workspace/frontend && npm install
+
+npm WARN deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm WARN deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm WARN deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm WARN deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm WARN deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm WARN deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 467 packages, and audited 468 packages in 3m
+
+159 packages are looking for funding
+  run `npm fund` for details
+
+1 critical severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+npm notice 
+npm notice New major version of npm available! 10.2.4 -> 11.6.1
+npm notice Changelog: <https://github.com/npm/cli/releases/tag/v11.6.1>
+npm notice Run `npm install -g npm@11.6.1` to update!
+npm notice 
+$ cd /workspace/frontend && npm run build
+
+
+> routix-frontend@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./components/chat/ChatInterface.tsx
+Module not found: Can't resolve '@/hooks/usePolling'
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./app/chat/page.tsx
+
+
+> Build failed because of webpack errors

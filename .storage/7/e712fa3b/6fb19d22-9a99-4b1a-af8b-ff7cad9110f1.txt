@@ -1,0 +1,9 @@
+$ tree /workspace -I 'site-packages|node_modules' -L 3
+/workspace
+├── docs
+│   └── design
+│       └── prd.md
+└── uploads
+    └── Master Project Prompt - Routix Platform.pdf
+
+3 directories, 2 files

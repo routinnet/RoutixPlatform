@@ -1,0 +1,270 @@
+$ cd /workspace/backend && python test_api.py
+Traceback (most recent call last):
+  File "/workspace/backend/test_api.py", line 9, in <module>
+    from app.main import app
+  File "/workspace/backend/app/main.py", line 15, in <module>
+    from app.core.config import settings
+  File "/workspace/backend/app/core/config.py", line 8, in <module>
+    from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator
+  File "/data/.cache/python/lib/python3.10/site-packages/pydantic/__init__.py", line 363, in __getattr__
+    return _getattr_migration(attr_name)
+  File "/data/.cache/python/lib/python3.10/site-packages/pydantic/_migration.py", line 296, in wrapper
+    raise PydanticImportError(
+pydantic.errors.PydanticImportError: `BaseSettings` has been moved to the `pydantic-settings` package. See https://docs.pydantic.dev/2.5/migration/#basesettings-has-moved-to-pydantic-settings for more details.
+
+For further information visit https://errors.pydantic.dev/2.5/u/import-error
+$ cd /workspace/backend && pip install redis==5.0.1 celery==5.3.4 flower==2.0.1
+
+bash: /data/.cache/python/bin/pip: /workspace/routix-platform/backend/venv/bin/python3: bad interpreter: No such file or directory
+$ chmod +x /workspace/backend/scripts/start_celery.sh
+
+$ chmod +x /workspace/backend/scripts/stop_celery.sh
+
+$ cd /workspace/backend && pip install flower==2.0.1 psutil==5.9.6
+
+bash: /data/.cache/python/bin/pip: /workspace/routix-platform/backend/venv/bin/python3: bad interpreter: No such file or directory
+$ cd /workspace/backend && python scripts/test_redis_celery.py
+
+Traceback (most recent call last):
+  File "/workspace/backend/scripts/test_redis_celery.py", line 7, in <module>
+    from app.services.redis_service import redis_service
+ModuleNotFoundError: No module named 'app'
+$ cd /workspace/backend && ./scripts/start_celery.sh all
+
+[0;34m[2025-10-07 17:02:29] INFO: Checking Redis connection...[0m
+[0;31m[2025-10-07 17:02:30] ERROR: Redis is not running or not accessible[0m
+[0;34m[2025-10-07 17:02:30] INFO: Please start Redis server: redis-server[0m
+$ cd /workspace/backend && sleep 5 && ./scripts/start_celery.sh status
+
+[0;34m[2025-10-07 17:02:35] INFO: Celery Services Status:[0m
+
+[1;33m[2025-10-07 17:02:36] WARNING: Worker: Not running[0m
+[1;33m[2025-10-07 17:02:36] WARNING: Beat: Not running[0m
+[1;33m[2025-10-07 17:02:36] WARNING: Flower: Not running[0m
+
+[0;34m[2025-10-07 17:02:36] INFO: Active queues and tasks:[0m
+[1;33m[2025-10-07 17:02:37] WARNING: No active workers found[0m
+$ cd /workspace/backend && python -c "
+from app.workers.test_tasks import test_basic_task, health_check_task
+import time
+
+print('🚀 Testing Celery task execution...')
+
+# Test basic task
+print('Queuing basic task...')
+result = test_basic_task.delay('Hello from Celery test!')
+print(f'Task ID: {result.id}')
+
+# Wait for result
+print('Waiting for result...')
+try:
+    task_result = result.get(timeout=30)
+    print(f'✅ Task completed: {task_result}')
+except Exception as e:
+    print(f'❌ Task failed: {e}')
+
+# Test health check
+print('\\nTesting health check task...')
+health_result = health_check_task.delay()
+try:
+    health_data = health_result.get(timeout=10)
+    print(f'✅ Health check: {health_data}')
+except Exception as e:
+    print(f'❌ Health check failed: {e}')
+"
+
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+  File "/workspace/backend/app/workers/test_tasks.py", line 8, in <module>
+    from app.workers.celery_app import celery_app
+  File "/workspace/backend/app/workers/celery_app.py", line 6, in <module>
+    from app.core.config import settings
+  File "/workspace/backend/app/core/config.py", line 8, in <module>
+    from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator
+  File "/data/.cache/python/lib/python3.10/site-packages/pydantic/__init__.py", line 363, in __getattr__
+    return _getattr_migration(attr_name)
+  File "/data/.cache/python/lib/python3.10/site-packages/pydantic/_migration.py", line 296, in wrapper
+    raise PydanticImportError(
+pydantic.errors.PydanticImportError: `BaseSettings` has been moved to the `pydantic-settings` package. See https://docs.pydantic.dev/2.5/migration/#basesettings-has-moved-to-pydantic-settings for more details.
+
+For further information visit https://errors.pydantic.dev/2.5/u/import-error
+$ cd /workspace/backend && curl -s http://localhost:5555/api/workers | python -m json.tool || echo "Flower dashboard not yet accessible"
+
+Expecting value: line 1 column 1 (char 0)
+Flower dashboard not yet accessible
+$ cd /workspace/backend && pip install google-generativeai==0.3.2 openai==1.3.7 pillow==10.1.0
+
+bash: /data/.cache/python/bin/pip: /workspace/routix-platform/backend/venv/bin/python3: bad interpreter: No such file or directory
+$ cd /workspace/backend && python scripts/test_ai_service.py
+
+Traceback (most recent call last):
+  File "/workspace/backend/scripts/test_ai_service.py", line 8, in <module>
+    from app.services.ai_service import vision_ai_service, AIServiceError
+ModuleNotFoundError: No module named 'app'
+$ cd /workspace/backend && python -c "
+from app.api.v1.endpoints.ai import router
+from app.services.ai_service import vision_ai_service
+from app.services.embedding_service import embedding_service
+print('✅ AI endpoints imported successfully')
+print('✅ Vision AI service initialized')
+print('✅ Embedding service initialized')
+print('✅ All AI components working')
+"
+
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+  File "/workspace/backend/app/api/v1/endpoints/ai.py", line 7, in <module>
+    from app.services.ai_service import vision_ai_service, AIServiceError
+  File "/workspace/backend/app/services/ai_service.py", line 16, in <module>
+    from app.core.config import settings
+  File "/workspace/backend/app/core/config.py", line 6, in <module>
+    from pydantic_settings import BaseSettings
+  File "/opt/conda/envs/mgx-chat/lib/python3.10/site-packages/pydantic_settings/__init__.py", line 1, in <module>
+    from .main import BaseSettings, CliApp, SettingsConfigDict
+  File "/opt/conda/envs/mgx-chat/lib/python3.10/site-packages/pydantic_settings/main.py", line 12, in <module>
+    from pydantic._internal._signature import _field_name_for_signature
+ModuleNotFoundError: No module named 'pydantic._internal._signature'
+$ cd /workspace/backend && python -m pip install pydantic-settings==2.0.3 google-generativeai==0.3.2 openai==1.3.7
+
+Collecting pydantic-settings==2.0.3
+  Downloading pydantic_settings-2.0.3-py3-none-any.whl.metadata (2.9 kB)
+Collecting google-generativeai==0.3.2
+  Downloading google_generativeai-0.3.2-py3-none-any.whl.metadata (5.9 kB)
+Collecting openai==1.3.7
+  Downloading openai-1.3.7-py3-none-any.whl.metadata (17 kB)
+Requirement already satisfied: pydantic>=2.0.1 in /data/.cache/python/lib/python3.10/site-packages (from pydantic-settings==2.0.3) (2.5.0)
+Requirement already satisfied: python-dotenv>=0.21.0 in /data/.cache/python/lib/python3.10/site-packages (from pydantic-settings==2.0.3) (1.0.0)
+Requirement already satisfied: google-ai-generativelanguage==0.4.0 in /data/.cache/python/lib/python3.10/site-packages (from google-generativeai==0.3.2) (0.4.0)
+Requirement already satisfied: google-auth in /data/.cache/python/lib/python3.10/site-packages (from google-generativeai==0.3.2) (2.40.3)
+Requirement already satisfied: google-api-core in /data/.cache/python/lib/python3.10/site-packages (from google-generativeai==0.3.2) (2.25.1)
+Requirement already satisfied: typing-extensions in /data/.cache/python/lib/python3.10/site-packages (from google-generativeai==0.3.2) (4.15.0)
+Requirement already satisfied: protobuf in /data/.cache/python/lib/python3.10/site-packages (from google-generativeai==0.3.2) (4.25.8)
+Requirement already satisfied: tqdm in /data/.cache/python/lib/python3.10/site-packages (from google-generativeai==0.3.2) (4.67.1)
+Requirement already satisfied: anyio<4,>=3.5.0 in /data/.cache/python/lib/python3.10/site-packages (from openai==1.3.7) (3.7.1)
+Requirement already satisfied: distro<2,>=1.7.0 in /opt/conda/envs/mgx-chat/lib/python3.10/site-packages (from openai==1.3.7) (1.9.0)
+Requirement already satisfied: httpx<1,>=0.23.0 in /data/.cache/python/lib/python3.10/site-packages (from openai==1.3.7) (0.25.2)
+Requirement already satisfied: sniffio in /data/.cache/python/lib/python3.10/site-packages (from openai==1.3.7) (1.3.1)
+Requirement already satisfied: proto-plus<2.0.0dev,>=1.22.3 in /data/.cache/python/lib/python3.10/site-packages (from google-ai-generativelanguage==0.4.0->google-generativeai==0.3.2) (1.26.1)
+Requirement already satisfied: idna>=2.8 in /data/.cache/python/lib/python3.10/site-packages (from anyio<4,>=3.5.0->openai==1.3.7) (3.10)
+Requirement already satisfied: exceptiongroup in /data/.cache/python/lib/python3.10/site-packages (from anyio<4,>=3.5.0->openai==1.3.7) (1.3.0)
+Requirement already satisfied: googleapis-common-protos<2.0.0,>=1.56.2 in /data/.cache/python/lib/python3.10/site-packages (from google-api-core->google-generativeai==0.3.2) (1.70.0)
+Requirement already satisfied: requests<3.0.0,>=2.18.0 in /data/.cache/python/lib/python3.10/site-packages (from google-api-core->google-generativeai==0.3.2) (2.32.5)
+Requirement already satisfied: grpcio<2.0.0,>=1.33.2 in /data/.cache/python/lib/python3.10/site-packages (from google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.0->google-ai-generativelanguage==0.4.0->google-generativeai==0.3.2) (1.74.0)
+Requirement already satisfied: grpcio-status<2.0.0,>=1.33.2 in /data/.cache/python/lib/python3.10/site-packages (from google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.0->google-ai-generativelanguage==0.4.0->google-generativeai==0.3.2) (1.62.3)
+Requirement already satisfied: cachetools<6.0,>=2.0.0 in /data/.cache/python/lib/python3.10/site-packages (from google-auth->google-generativeai==0.3.2) (5.5.2)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in /data/.cache/python/lib/python3.10/site-packages (from google-auth->google-generativeai==0.3.2) (0.4.2)
+Requirement already satisfied: rsa<5,>=3.1.4 in /data/.cache/python/lib/python3.10/site-packages (from google-auth->google-generativeai==0.3.2) (4.9.1)
+Requirement already satisfied: certifi in /data/.cache/python/lib/python3.10/site-packages (from httpx<1,>=0.23.0->openai==1.3.7) (2025.8.3)
+Requirement already satisfied: httpcore==1.* in /opt/conda/envs/mgx-chat/lib/python3.10/site-packages (from httpx<1,>=0.23.0->openai==1.3.7) (1.0.9)
+Requirement already satisfied: h11>=0.16 in /data/.cache/python/lib/python3.10/site-packages (from httpcore==1.*->httpx<1,>=0.23.0->openai==1.3.7) (0.16.0)
+Requirement already satisfied: annotated-types>=0.4.0 in /data/.cache/python/lib/python3.10/site-packages (from pydantic>=2.0.1->pydantic-settings==2.0.3) (0.7.0)
+Requirement already satisfied: pydantic-core==2.14.1 in /data/.cache/python/lib/python3.10/site-packages (from pydantic>=2.0.1->pydantic-settings==2.0.3) (2.14.1)
+Requirement already satisfied: charset_normalizer<4,>=2 in /data/.cache/python/lib/python3.10/site-packages (from requests<3.0.0,>=2.18.0->google-api-core->google-generativeai==0.3.2) (3.4.3)
+Requirement already satisfied: urllib3<3,>=1.21.1 in /data/.cache/python/lib/python3.10/site-packages (from requests<3.0.0,>=2.18.0->google-api-core->google-generativeai==0.3.2) (2.5.0)
+Requirement already satisfied: pyasn1>=0.1.3 in /data/.cache/python/lib/python3.10/site-packages (from rsa<5,>=3.1.4->google-auth->google-generativeai==0.3.2) (0.6.1)
+Downloading pydantic_settings-2.0.3-py3-none-any.whl (11 kB)
+Downloading google_generativeai-0.3.2-py3-none-any.whl (146 kB)
+Downloading openai-1.3.7-py3-none-any.whl (221 kB)
+Installing collected packages: pydantic-settings, openai, google-generativeai
+  Attempting uninstall: pydantic-settings
+    Found existing installation: pydantic-settings 2.8.1
+    Uninstalling pydantic-settings-2.8.1:
+      Successfully uninstalled pydantic-settings-2.8.1
+  Attempting uninstall: openai
+    Found existing installation: openai 1.6.1
+    Uninstalling openai-1.6.1:
+      Successfully uninstalled openai-1.6.1
+  Attempting uninstall: google-generativeai
+    Found existing installation: google-generativeai 0.3.0
+    Uninstalling google-generativeai-0.3.0:
+      Successfully uninstalled google-generativeai-0.3.0
+
+ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+llama-index-embeddings-gemini 0.1.6 requires google-generativeai<0.5.0,>=0.4.1, but you have google-generativeai 0.3.2 which is incompatible.
+mcp 1.5.0 requires anyio>=4.5, but you have anyio 3.7.1 which is incompatible.
+mcp 1.5.0 requires httpx>=0.27, but you have httpx 0.25.2 which is incompatible.
+mcp 1.5.0 requires pydantic<3.0.0,>=2.7.2, but you have pydantic 2.5.0 which is incompatible.
+mcp 1.5.0 requires pydantic-settings>=2.5.2, but you have pydantic-settings 2.0.3 which is incompatible.
+semantic-kernel 0.4.3.dev0 requires numpy<2.0.0,>=1.24.2, but you have numpy 2.2.6 which is incompatible.
+Successfully installed google-generativeai-0.3.2 openai-1.3.7 pydantic-settings-2.0.3
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+$ cd /workspace/backend && python -c "
+from app.services.ai_service import embedding_service, vision_ai_service
+print('✅ AI services imported successfully')
+print(f'✅ Embedding model: {embedding_service.model}')
+print(f'✅ Embedding dimensions: {embedding_service.dimensions}')
+print(f'✅ Batch size: {embedding_service.batch_size}')
+print(f'✅ Cache TTL: {embedding_service.cache_ttl} seconds')
+print('✅ All AI components working correctly')
+"
+
+Warning: GEMINI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured for embeddings
+✅ AI services imported successfully
+✅ Embedding model: text-embedding-3-small
+✅ Embedding dimensions: 1536
+✅ Batch size: 100
+✅ Cache TTL: 86400 seconds
+✅ All AI components working correctly
+$ cd /workspace/backend && python scripts/test_embedding_service.py
+
+Traceback (most recent call last):
+  File "/workspace/backend/scripts/test_embedding_service.py", line 7, in <module>
+    from app.services.ai_service import embedding_service, AIServiceError
+ModuleNotFoundError: No module named 'app'
+$ cd /workspace/backend && python scripts/test_midjourney_service.py
+
+Traceback (most recent call last):
+  File "/workspace/backend/scripts/test_midjourney_service.py", line 6, in <module>
+    from app.services.midjourney_service import midjourney_service, MidjourneyServiceError
+ModuleNotFoundError: No module named 'app'
+$ cd /workspace/backend && python -c "
+from app.services.template_service import template_service
+from app.api.v1.endpoints.templates import router
+print('✅ Template service imported successfully')
+print('✅ Template API endpoints imported successfully')
+print('✅ All template management components working')
+"
+
+Traceback (most recent call last):
+  File "<string>", line 3, in <module>
+  File "/workspace/backend/app/api/v1/endpoints/templates.py", line 9, in <module>
+    from app.core.dependencies import get_current_user
+  File "/workspace/backend/app/core/dependencies.py", line 10, in <module>
+    from app.core.database import get_db_session
+ImportError: cannot import name 'get_db_session' from 'app.core.database' (/workspace/backend/app/core/database.py)
+Warning: GEMINI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured for embeddings
+Warning: OPENAI_API_KEY not configured for embeddings
+$ cd /workspace/backend && python -c "
+from app.services.generation_service import generation_service
+from app.api.v1.endpoints.generation import router
+print('✅ Generation service imported successfully')
+print('✅ Generation API endpoints imported successfully')
+print('✅ All generation orchestration components working')
+"
+
+Warning: GEMINI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured for embeddings
+Warning: OPENAI_API_KEY not configured for embeddings
+Warning: Neither GOAPI_API_KEY nor USEAPI_API_KEY configured
+✅ Generation service imported successfully
+✅ Generation API endpoints imported successfully
+✅ All generation orchestration components working
+$ cd /workspace/backend && python -c "
+from app.services.chat_service import chat_service
+from app.api.v1.endpoints.chat import router
+print('✅ Chat service imported successfully')
+print('✅ Chat API endpoints imported successfully')
+print('✅ All chat management components working')
+"
+
+Warning: GEMINI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured
+Warning: OPENAI_API_KEY not configured for embeddings
+✅ Chat service imported successfully
+✅ Chat API endpoints imported successfully
+✅ All chat management components working

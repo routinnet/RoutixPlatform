@@ -1,0 +1,19 @@
+$ cd /workspace && mv routix-web frontend
+mv: cannot stat 'routix-web': No such file or directory
+$ cd /workspace/frontend && npm install axios @tanstack/react-query zustand framer-motion react-hook-form zod lucide-react sonner react-dropzone next-auth socket.io-client recharts clsx tailwind-merge
+
+bash: line 4: cd: /workspace/frontend: No such file or directory
+$ cd /workspace/frontend && npm install -D @types/node @types/react @types/react-dom
+
+bash: line 7: cd: /workspace/frontend: No such file or directory
+$ cd /workspace/frontend && npm run build
+
+npm ERR! code ENOENT
+npm ERR! syscall open
+npm ERR! path /workspace/frontend/package.json
+npm ERR! errno -2
+npm ERR! enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/workspace/frontend/package.json'
+npm ERR! enoent This is related to npm not being able to find a file.
+npm ERR! enoent 
+
+npm ERR! A complete log of this run can be found in: /root/.npm/_logs/2025-10-08T10_39_20_173Z-debug-0.log

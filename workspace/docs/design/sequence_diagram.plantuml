@@ -1,0 +1,336 @@
+@startuml Routix Generation Flow
+actor User
+participant "Chat UI" as UI
+participant "WebSocket" as WS
+participant "API Gateway" as Gateway
+participant "Chat Service" as ChatSvc
+participant "Generation Service" as GenSvc
+participant "Template Service" as TemplateSvc
+participant "AI Service" as AI
+participant "Celery Worker" as Worker
+participant "Database" as DB
+participant "Redis Cache" as Redis
+participant "Storage (R2)" as Storage
+
+== User Initiates Generation ==
+User -> UI: Types "Create energetic gaming thumbnail"
+UI -> Gateway: POST /api/v1/chat/conversations/{id}/messages
+    note right
+        Input: {
+            "conversation_id": "550e8400-e29b-41d4-a716-446655440000",
+            "content": "Create energetic gaming thumbnail",
+            "type": "text",
+            "metadata": {}
+        }
+    end note
+
+Gateway -> ChatSvc: process_message()
+ChatSvc -> DB: INSERT INTO messages
+ChatSvc -> GenSvc: analyze_user_request()
+    note right
+        Input: {
+            "prompt": "Create energetic gaming thumbnail",
+            "user_id": "550e8400-e29b-41d4-a716-446655440001",
+            "conversation_id": "550e8400-e29b-41d4-a716-446655440000"
+        }
+    end note
+
+== AI Intent Analysis ==
+GenSvc -> AI: analyze_prompt_intent()
+    note right
+        Gemini Vision API Call:
+        "Analyze this thumbnail request and extract:
+        - Category (gaming, business, lifestyle, etc.)
+        - Style preference (energetic, calm, professional)
+        - Visual elements mentioned
+        - Target mood/emotion
+        Return as structured JSON."
+    end note
+
+AI --> GenSvc: Intent analysis result
+    note right
+        Output: {
+            "category": "gaming",
+            "style": "energetic",
+            "mood": "exciting",
+            "energy_level": 8,
+            "visual_elements": ["action", "dynamic", "bold"],
+            "target_audience": "gamers"
+        }
+    end note
+
+== Template Search ==
+GenSvc -> AI: generate_search_embedding()
+    note right
+        OpenAI Embeddings API:
+        Input: "gaming energetic exciting action dynamic bold"
+        Model: "text-embedding-3-small"
+    end note
+
+AI --> GenSvc: Search embedding vector
+    note right
+        Output: {
+            "embedding": [0.123, -0.456, 0.789, ...], // 1536 dimensions
+            "model": "text-embedding-3-small"
+        }
+    end note
+
+GenSvc -> TemplateSvc: search_similar_templates()
+    note right
+        Input: {
+            "query_embedding": [0.123, -0.456, 0.789, ...],
+            "filters": {
+                "category": "gaming",
+                "energy_level_min": 6,
+                "is_active": true
+            },
+            "limit": 3,
+            "similarity_threshold": 0.7
+        }
+    end note
+
+TemplateSvc -> DB: Vector similarity search
+    note right
+        SQL Query:
+        SELECT *, embedding <=> $1 as distance
+        FROM templates 
+        WHERE category = 'gaming' 
+        AND energy_level >= 6 
+        AND is_active = true
+        ORDER BY embedding <=> $1, performance_score DESC
+        LIMIT 3
+    end note
+
+DB --> TemplateSvc: Top matching templates
+    note right
+        Output: {
+            "templates": [
+                {
+                    "id": "template-uuid-1",
+                    "similarity_score": 0.95,
+                    "performance_score": 8.7,
+                    "style_dna": {...}
+                },
+                {
+                    "id": "template-uuid-2", 
+                    "similarity_score": 0.89,
+                    "performance_score": 8.2,
+                    "style_dna": {...}
+                }
+            ]
+        }
+    end note
+
+== Algorithm Selection ==
+GenSvc -> ChatSvc: send_algorithm_selection_message()
+ChatSvc -> WS: broadcast_message()
+WS -> UI: Display algorithm options
+    note right
+        WebSocket Message: {
+            "type": "chat:message",
+            "payload": {
+                "role": "assistant",
+                "type": "algorithm_select",
+                "content": "Which Routix version would you like to use?",
+                "metadata": {
+                    "options": [
+                        {"id": "routix_v1", "name": "Routix v1", "credits": 2},
+                        {"id": "routix_pro", "name": "Routix Pro", "credits": 4},
+                        {"id": "routix_lightning", "name": "Routix Lightning", "credits": 1}
+                    ]
+                }
+            }
+        }
+    end note
+
+User -> UI: Selects "Routix Pro"
+UI -> Gateway: POST /api/v1/generation/create
+    note right
+        Input: {
+            "conversation_id": "550e8400-e29b-41d4-a716-446655440000",
+            "algorithm_id": "routix_pro_uuid",
+            "prompt": "Create energetic gaming thumbnail",
+            "user_preferences": {
+                "selected_template_preference": "highest_performance"
+            }
+        }
+    end note
+
+== Generation Request Creation ==
+Gateway -> GenSvc: create_generation_request()
+GenSvc -> DB: INSERT INTO generation_requests
+    note right
+        Database Insert: {
+            "id": "gen-req-uuid",
+            "user_id": "user-uuid",
+            "algorithm_id": "routix_pro_uuid", 
+            "prompt": "Create energetic gaming thumbnail",
+            "status": "PENDING",
+            "progress": 0,
+            "selected_template_id": "template-uuid-1",
+            "created_at": "2024-12-06T10:30:00Z"
+        }
+    end note
+
+GenSvc -> GenSvc: check_user_credits()
+    note right
+        Credit Check: {
+            "user_credits": 25,
+            "algorithm_cost": 4,
+            "sufficient": true
+        }
+    end note
+
+GenSvc -> Worker: queue_generation_task.delay()
+    note right
+        Celery Task: {
+            "task": "generate_thumbnail_task",
+            "args": {
+                "request_id": "gen-req-uuid",
+                "user_id": "user-uuid",
+                "algorithm_config": {
+                    "provider": "midjourney",
+                    "style_strength": 0.8,
+                    "quality": "high"
+                },
+                "template_data": {...},
+                "user_prompt": "Create energetic gaming thumbnail"
+            }
+        }
+    end note
+
+GenSvc -> ChatSvc: send_generation_started_message()
+ChatSvc -> WS: broadcast_message()
+WS -> UI: "Perfect! Generating now... ✨"
+
+== Background Generation Process ==
+Worker -> Redis: SET progress:gen-req-uuid 10
+Worker -> WS: broadcast_progress_update()
+WS -> UI: Progress: "Analyzing your request..." (10%)
+
+Worker -> AI: enhance_prompt_with_template()
+    note right
+        Prompt Enhancement: {
+            "original_prompt": "Create energetic gaming thumbnail",
+            "template_style_dna": {
+                "color_palette": ["#FF6B35", "#F7931E", "#FFD23F"],
+                "composition": "dynamic_diagonal",
+                "typography": "bold_impact",
+                "energy_level": 9
+            },
+            "enhanced_prompt": "Create an energetic gaming thumbnail with dynamic diagonal composition, bold impact typography, vibrant orange and yellow color palette (#FF6B35, #F7931E, #FFD23F), high energy explosive action style --ar 16:9 --style raw --stylize 750"
+        }
+    end note
+
+Worker -> Redis: SET progress:gen-req-uuid 30
+Worker -> WS: broadcast_progress_update()
+WS -> UI: Progress: "Matching templates..." (30%)
+
+Worker -> AI: generate_thumbnail()
+    note right
+        Midjourney API Call: {
+            "prompt": "Create an energetic gaming thumbnail with dynamic diagonal composition, bold impact typography, vibrant orange and yellow color palette, high energy explosive action style --ar 16:9 --style raw --stylize 750",
+            "style_reference": "template_style_dna_encoded",
+            "aspect_ratio": "16:9",
+            "quality": "high"
+        }
+    end note
+
+Worker -> Redis: SET progress:gen-req-uuid 50
+Worker -> WS: broadcast_progress_update()
+WS -> UI: Progress: "Composing design..." (50%)
+
+Worker -> Redis: SET progress:gen-req-uuid 75
+Worker -> WS: broadcast_progress_update()
+WS -> UI: Progress: "Generating thumbnail..." (75%)
+
+== Generation Completion ==
+AI --> Worker: Generation complete
+    note right
+        Midjourney Response: {
+            "status": "completed",
+            "image_url": "https://cdn.midjourney.com/abc123/final.png",
+            "generation_id": "mj_gen_456789",
+            "processing_time": 28.5
+        }
+    end note
+
+Worker -> Storage: upload_generated_thumbnail()
+    note right
+        R2 Storage Upload: {
+            "source_url": "https://cdn.midjourney.com/abc123/final.png",
+            "destination": "thumbnails/gen-req-uuid/final.jpg",
+            "metadata": {
+                "generation_id": "gen-req-uuid",
+                "algorithm": "routix_pro",
+                "created_at": "2024-12-06T10:32:28Z"
+            }
+        }
+    end note
+
+Storage --> Worker: Upload successful
+    note right
+        Output: {
+            "final_url": "https://storage.routix.com/thumbnails/gen-req-uuid/final.jpg",
+            "file_size": 245760,
+            "format": "JPEG"
+        }
+    end note
+
+Worker -> DB: UPDATE generation_requests
+    note right
+        Database Update: {
+            "status": "COMPLETED",
+            "progress": 100,
+            "final_thumbnail_url": "https://storage.routix.com/thumbnails/gen-req-uuid/final.jpg",
+            "processing_time": 28.5,
+            "completed_at": "2024-12-06T10:32:30Z"
+        }
+    end note
+
+Worker -> DB: UPDATE users SET credits = credits - 4
+Worker -> DB: INSERT INTO credit_transactions
+    note right
+        Credit Transaction: {
+            "user_id": "user-uuid",
+            "generation_request_id": "gen-req-uuid",
+            "transaction_type": "GENERATION_COST",
+            "amount": -4,
+            "balance_after": 21,
+            "description": "Routix Pro generation"
+        }
+    end note
+
+Worker -> Redis: SET progress:gen-req-uuid 100
+Worker -> WS: broadcast_completion()
+WS -> UI: Display final result
+    note right
+        WebSocket Message: {
+            "type": "generation:completed",
+            "payload": {
+                "request_id": "gen-req-uuid",
+                "thumbnail_url": "https://storage.routix.com/thumbnails/gen-req-uuid/final.jpg",
+                "processing_time": 28.5,
+                "algorithm_used": "Routix Pro",
+                "actions": ["download", "regenerate", "share"],
+                "metadata": {
+                    "dimensions": "1920x1080",
+                    "file_size": "240KB",
+                    "format": "JPEG"
+                }
+            }
+        }
+    end note
+
+== User Interaction with Result ==
+UI -> User: Show thumbnail with action buttons
+User -> UI: Clicks "Download"
+UI -> Gateway: GET /api/v1/generation/{id}/download
+Gateway -> GenSvc: get_download_url()
+GenSvc -> Storage: generate_signed_url()
+Storage --> GenSvc: Signed download URL
+GenSvc --> Gateway: Download URL
+Gateway --> UI: Redirect to download
+UI -> User: File download starts
+
+@enduml

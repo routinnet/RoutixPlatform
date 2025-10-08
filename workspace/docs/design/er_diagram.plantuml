@@ -1,0 +1,259 @@
+@startuml Routix Database ER Diagram
+!define TABLE entity
+!define PK <<PK>>
+!define FK <<FK>>
+!define UK <<UK>>
+
+entity "users" as users {
+    * id : uuid PK
+    --
+    * email : varchar(255) UK
+    * username : varchar(100) UK
+    * password_hash : varchar(255)
+    * credits : integer DEFAULT 10
+    * subscription_tier : varchar(50) DEFAULT 'free'
+    * stripe_customer_id : varchar(255)
+    * is_active : boolean DEFAULT true
+    * is_admin : boolean DEFAULT false
+    * email_verified : boolean DEFAULT false
+    * created_at : timestamp DEFAULT now()
+    * updated_at : timestamp DEFAULT now()
+    * last_login : timestamp
+    --
+    CONSTRAINT check_credits_non_negative CHECK (credits >= 0)
+    CONSTRAINT check_valid_tier CHECK (subscription_tier IN ('free', 'pro', 'agency', 'enterprise'))
+}
+
+entity "templates" as templates {
+    * id : uuid PK
+    --
+    * image_url : varchar(500)
+    * thumbnail_url : varchar(500)
+    * style_dna : jsonb
+    * embedding : vector(1536)
+    * category : varchar(100)
+    * tags : varchar[] DEFAULT '{}'
+    * description : text
+    * has_face : boolean DEFAULT false
+    * has_text : boolean DEFAULT false
+    * has_logo : boolean DEFAULT false
+    * energy_level : integer CHECK (energy_level BETWEEN 1 AND 10)
+    * performance_score : decimal(4,2) DEFAULT 5.0
+    * usage_count : integer DEFAULT 0
+    * success_rate : decimal(4,2) DEFAULT 0.0
+    * is_active : boolean DEFAULT true
+    * is_featured : boolean DEFAULT false
+    * priority : integer DEFAULT 0
+    * created_by : uuid FK
+    * created_at : timestamp DEFAULT now()
+    * updated_at : timestamp DEFAULT now()
+    --
+    CONSTRAINT check_performance_score CHECK (performance_score BETWEEN 0 AND 10)
+    CONSTRAINT check_success_rate CHECK (success_rate BETWEEN 0 AND 100)
+}
+
+entity "generation_algorithms" as algorithms {
+    * id : uuid PK
+    --
+    * name : varchar(100) UK
+    * display_name : varchar(100)
+    * description : text
+    * ai_provider : varchar(50)
+    * config : jsonb
+    * cost_per_generation : decimal(10,4)
+    * credit_cost : integer
+    * is_active : boolean DEFAULT true
+    * is_default : boolean DEFAULT false
+    * performance_metrics : jsonb DEFAULT '{}'
+    * created_at : timestamp DEFAULT now()
+    * updated_at : timestamp DEFAULT now()
+    --
+    CONSTRAINT check_credit_cost_positive CHECK (credit_cost > 0)
+    CONSTRAINT check_valid_provider CHECK (ai_provider IN ('midjourney', 'dalle3', 'sdxl', 'stable_diffusion'))
+}
+
+entity "generation_requests" as requests {
+    * id : uuid PK
+    --
+    * user_id : uuid FK
+    * conversation_id : uuid FK
+    * algorithm_id : uuid FK
+    * selected_template_id : uuid FK
+    * prompt : text
+    * enhanced_prompt : text
+    * user_face_url : varchar(500)
+    * user_logo_url : varchar(500)
+    * custom_text : varchar(500)
+    * status : varchar(50) DEFAULT 'pending'
+    * progress : integer DEFAULT 0 CHECK (progress BETWEEN 0 AND 100)
+    * final_thumbnail_url : varchar(500)
+    * processing_time : decimal(8,2)
+    * cost_incurred : decimal(10,4) DEFAULT 0
+    * error_message : text
+    * retry_count : integer DEFAULT 0
+    * created_at : timestamp DEFAULT now()
+    * completed_at : timestamp
+    --
+    CONSTRAINT check_valid_status CHECK (status IN ('pending', 'analyzing', 'searching', 'composing', 'generating', 'completed', 'failed', 'cancelled'))
+    CONSTRAINT check_retry_count CHECK (retry_count >= 0 AND retry_count <= 3)
+}
+
+entity "conversations" as conversations {
+    * id : uuid PK
+    --
+    * user_id : uuid FK
+    * title : varchar(200)
+    * message_count : integer DEFAULT 0
+    * created_at : timestamp DEFAULT now()
+    * updated_at : timestamp DEFAULT now()
+    * is_archived : boolean DEFAULT false
+}
+
+entity "messages" as messages {
+    * id : uuid PK
+    --
+    * conversation_id : uuid FK
+    * role : varchar(20)
+    * type : varchar(50)
+    * content : text
+    * metadata : jsonb DEFAULT '{}'
+    * timestamp : timestamp DEFAULT now()
+    * is_edited : boolean DEFAULT false
+    * edited_at : timestamp
+    --
+    CONSTRAINT check_valid_role CHECK (role IN ('user', 'assistant', 'system'))
+    CONSTRAINT check_valid_type CHECK (type IN ('text', 'thumbnail_result', 'progress_update', 'algorithm_select', 'file_upload', 'system_notification'))
+}
+
+entity "user_assets" as assets {
+    * id : uuid PK
+    --
+    * user_id : uuid FK
+    * asset_type : varchar(50)
+    * file_url : varchar(500)
+    * file_name : varchar(255)
+    * file_size : bigint
+    * mime_type : varchar(100)
+    * is_active : boolean DEFAULT true
+    * usage_count : integer DEFAULT 0
+    * created_at : timestamp DEFAULT now()
+    --
+    CONSTRAINT check_valid_asset_type CHECK (asset_type IN ('face_image', 'logo_image', 'custom_image'))
+    CONSTRAINT check_file_size_positive CHECK (file_size > 0)
+}
+
+entity "subscriptions" as subscriptions {
+    * id : uuid PK
+    --
+    * user_id : uuid FK UK
+    * plan_name : varchar(100)
+    * status : varchar(50)
+    * current_period_start : timestamp
+    * current_period_end : timestamp
+    * stripe_subscription_id : varchar(255) UK
+    * created_at : timestamp DEFAULT now()
+    * updated_at : timestamp DEFAULT now()
+    --
+    CONSTRAINT check_valid_plan CHECK (plan_name IN ('free', 'pro', 'agency', 'enterprise'))
+    CONSTRAINT check_valid_status CHECK (status IN ('active', 'cancelled', 'past_due', 'unpaid', 'incomplete'))
+}
+
+entity "credit_transactions" as transactions {
+    * id : uuid PK
+    --
+    * user_id : uuid FK
+    * generation_request_id : uuid FK
+    * transaction_type : varchar(50)
+    * amount : integer
+    * balance_after : integer
+    * description : varchar(255)
+    * created_at : timestamp DEFAULT now()
+    --
+    CONSTRAINT check_valid_transaction_type CHECK (transaction_type IN ('purchase', 'generation_cost', 'refund', 'bonus', 'subscription_credit'))
+    CONSTRAINT check_balance_non_negative CHECK (balance_after >= 0)
+}
+
+entity "admin_audit_log" as audit {
+    * id : uuid PK
+    --
+    * admin_user_id : uuid FK
+    * action : varchar(100)
+    * resource_type : varchar(100)
+    * resource_id : uuid
+    * changes : jsonb
+    * ip_address : inet
+    * user_agent : varchar(500)
+    * created_at : timestamp DEFAULT now()
+}
+
+entity "template_performance" as performance {
+    * id : uuid PK
+    --
+    * template_id : uuid FK
+    * generation_request_id : uuid FK
+    * user_rating : integer CHECK (user_rating BETWEEN 1 AND 5)
+    * processing_time : decimal(8,2)
+    * success : boolean
+    * similarity_score : decimal(4,3)
+    * created_at : timestamp DEFAULT now()
+}
+
+entity "system_settings" as settings {
+    * id : uuid PK
+    --
+    * key : varchar(100) UK
+    * value : jsonb
+    * description : text
+    * is_public : boolean DEFAULT false
+    * created_at : timestamp DEFAULT now()
+    * updated_at : timestamp DEFAULT now()
+}
+
+' Primary relationships
+users ||--o{ conversations : "conversations.user_id -> users.id"
+users ||--o{ requests : "requests.user_id -> users.id"
+users ||--o{ assets : "assets.user_id -> users.id"
+users ||--o{ subscriptions : "subscriptions.user_id -> users.id"
+users ||--o{ transactions : "transactions.user_id -> users.id"
+users ||--o{ audit : "audit.admin_user_id -> users.id"
+users ||--o{ templates : "templates.created_by -> users.id"
+
+conversations ||--o{ messages : "messages.conversation_id -> conversations.id"
+conversations ||--o{ requests : "requests.conversation_id -> conversations.id"
+
+algorithms ||--o{ requests : "requests.algorithm_id -> algorithms.id"
+templates ||--o{ requests : "requests.selected_template_id -> templates.id"
+templates ||--o{ performance : "performance.template_id -> templates.id"
+
+requests ||--o{ transactions : "transactions.generation_request_id -> requests.id"
+requests ||--o{ performance : "performance.generation_request_id -> requests.id"
+
+' Indexes for performance
+note top of templates
+    Indexes:
+    - idx_templates_embedding_ivfflat (embedding vector_cosine_ops)
+    - idx_templates_category_active (category, is_active)
+    - idx_templates_performance (performance_score DESC, usage_count DESC)
+    - idx_templates_has_face (has_face, energy_level) WHERE is_active = true
+end note
+
+note top of requests
+    Indexes:
+    - idx_requests_user_status (user_id, status)
+    - idx_requests_created_at (created_at DESC)
+    - idx_requests_algorithm_status (algorithm_id, status)
+end note
+
+note top of messages
+    Indexes:
+    - idx_messages_conversation_timestamp (conversation_id, timestamp DESC)
+    - idx_messages_type (type) WHERE type != 'text'
+end note
+
+note top of transactions
+    Indexes:
+    - idx_transactions_user_created (user_id, created_at DESC)
+    - idx_transactions_type (transaction_type)
+end note
+
+@enduml

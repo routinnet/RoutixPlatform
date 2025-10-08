@@ -1,0 +1,31 @@
+{
+  "version": 3,
+  "middleware": {
+    "/": {
+      "files": [
+        "prerender-manifest.js",
+        "server/edge-runtime-webpack.js",
+        "server/middleware.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/((?!api|_next\\/static|_next\\/image|favicon.ico).*))(.json)?[\\/#\\?]?$",
+          "originalSource": "/((?!api|_next/static|_next/image|favicon.ico).*)"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "environments": {
+        "previewModeId": "0af3c4a0b43fed1d1b98a3e598165392",
+        "previewModeSigningKey": "09f3dc7165dec60a651a584e6229d0de5724c6de9130e429c108ff016f12cadd",
+        "previewModeEncryptionKey": "6b75b7ba337d5a5802c5a39cff2ae18e233e7a6c1f61bc847457accb981d8617"
+      }
+    }
+  },
+  "functions": {},
+  "sortedMiddleware": [
+    "/"
+  ]
+}

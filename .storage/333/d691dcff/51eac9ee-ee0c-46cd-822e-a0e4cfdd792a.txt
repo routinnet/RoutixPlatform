@@ -1,0 +1,48 @@
+$ cd /workspace/frontend && npm run build
+
+> routix-frontend@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./lib/api.ts:54:43
+Type error: Property 'detail' does not exist on type '{}'.
+
+[0m [90m 52 |[39m     [0m
+[0m [90m 53 |[39m     [90m// Show error toast[39m[0m
+[0m[31m[1m>[22m[39m[90m 54 |[39m     [36mconst[39m message [33m=[39m error[33m.[39mresponse[33m?[39m[33m.[39mdata[33m?[39m[33m.[39mdetail [33m||[39m [32m'An error occurred'[39m[0m
+[0m [90m    |[39m                                           [31m[1m^[22m[39m[0m
+[0m [90m 55 |[39m     toast[33m.[39merror(message)[0m
+[0m [90m 56 |[39m     [0m
+[0m [90m 57 |[39m     [36mreturn[39m [33mPromise[39m[33m.[39mreject(error)[0m
+$ cd /workspace/frontend && npm run build
+
+
+> routix-frontend@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./components/chat/ChatInterface.tsx:104:7
+Type error: Argument of type '{ prompt: string; }' is not assignable to parameter of type 'GenerationRequest'.
+  Property 'algorithm_id' is missing in type '{ prompt: string; }' but required in type 'GenerationRequest'.
+
+[0m [90m 102 |[39m     [90m// Generate thumbnail[39m[0m
+[0m [90m 103 |[39m     generateThumbnail([0m
+[0m[31m[1m>[22m[39m[90m 104 |[39m       { prompt }[33m,[39m[0m
+[0m [90m     |[39m       [31m[1m^[22m[39m[0m
+[0m [90m 105 |[39m       {[0m
+[0m [90m 106 |[39m         onSuccess[33m:[39m (response) [33m=>[39m {[0m
+[0m [90m 107 |[39m           [36mconst[39m generationId [33m=[39m response[33m.[39mdata[33m.[39mgeneration_id[0m

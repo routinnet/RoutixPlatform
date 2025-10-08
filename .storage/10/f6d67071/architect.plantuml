@@ -1,0 +1,114 @@
+@startuml Routix System Architecture
+!define RECTANGLE class
+
+package "Frontend Layer" {
+    [Next.js 14 App] as NextJS
+    [Chat Interface] as Chat
+    [Admin Panel] as Admin
+    [WebSocket Client] as WSClient
+    [Glassmorphism UI] as UI
+}
+
+package "API Gateway" {
+    [FastAPI Gateway] as Gateway
+    [JWT Authentication] as Auth
+    [Rate Limiting] as RateLimit
+    [Request Validation] as Validation
+}
+
+package "Core Services" {
+    [Chat Service] as ChatSvc
+    [Generation Service] as GenSvc
+    [Template Service] as TemplateSvc
+    [User Service] as UserSvc
+    [Admin Service] as AdminSvc
+    [WebSocket Service] as WSSvc
+}
+
+package "AI Services" {
+    [Gemini Vision API] as Gemini
+    [OpenAI GPT-4 Vision] as OpenAI
+    [Midjourney API] as Midjourney
+    [OpenAI Embeddings] as Embeddings
+}
+
+package "Background Processing" {
+    [Celery Workers] as Celery
+    [Template Analysis] as Analysis
+    [Generation Pipeline] as Pipeline
+    [Cleanup Tasks] as Cleanup
+}
+
+package "Data Layer" {
+    [PostgreSQL + pgvector] as DB
+    [Redis Cache/Queue] as Redis
+    [Cloudflare R2 Storage] as Storage
+}
+
+package "Real-time Layer" {
+    [WebSocket Server] as WSServer
+    [Server-Sent Events] as SSE
+}
+
+package "External Services" {
+    [Stripe Payments] as Stripe
+    [Email Service] as Email
+    [Monitoring] as Monitor
+}
+
+' Frontend connections
+NextJS --> Gateway : HTTPS/REST
+Chat --> WSClient : WebSocket
+Admin --> Gateway : HTTPS/REST
+WSClient --> WSServer : WebSocket
+
+' API Gateway connections
+Gateway --> Auth : JWT Validation
+Gateway --> RateLimit : Request Limiting
+Gateway --> Validation : Input Validation
+Gateway --> ChatSvc : Chat Operations
+Gateway --> GenSvc : Generation Requests
+Gateway --> TemplateSvc : Template Management
+Gateway --> UserSvc : User Operations
+Gateway --> AdminSvc : Admin Operations
+
+' Service connections
+ChatSvc --> DB : Store Messages
+ChatSvc --> WSSvc : Real-time Updates
+GenSvc --> Pipeline : Queue Generation
+GenSvc --> Celery : Background Tasks
+TemplateSvc --> Analysis : Template Processing
+TemplateSvc --> Storage : File Storage
+UserSvc --> DB : User Data
+UserSvc --> Stripe : Payment Processing
+AdminSvc --> DB : Admin Operations
+
+' AI Service connections
+Pipeline --> Gemini : Image Analysis
+Pipeline --> OpenAI : Fallback Analysis
+Pipeline --> Midjourney : Image Generation
+Analysis --> Gemini : Template Analysis
+Analysis --> Embeddings : Vector Generation
+
+' Background processing
+Celery --> Redis : Task Queue
+Pipeline --> Redis : Progress Updates
+WSServer --> Redis : Message Broadcasting
+
+' Data persistence
+ChatSvc --> Redis : Session Cache
+GenSvc --> DB : Request Storage
+TemplateSvc --> DB : Template Metadata
+Analysis --> DB : Analysis Results
+
+' Real-time communication
+WSSvc --> WSServer : WebSocket Management
+WSServer --> Redis : Connection State
+SSE --> Redis : Event Streaming
+
+' External integrations
+UserSvc --> Email : Notifications
+AdminSvc --> Monitor : System Metrics
+GenSvc --> Monitor : Performance Tracking
+
+@enduml

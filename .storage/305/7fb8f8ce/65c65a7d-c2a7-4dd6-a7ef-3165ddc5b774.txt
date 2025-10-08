@@ -1,0 +1,25 @@
+$ cd /workspace/frontend && npm run build
+
+> routix-frontend@0.1.0 build
+> next build
+
+sh: 1: next: not found
+$ cd /workspace/frontend && ls -la
+
+total 428563
+drwxr-xr-x   78 root root  65302528 Oct  8 04:49 .
+drwxr-xr-x 1059 root root 308273152 Oct  8 10:38 ..
+-rw-r--r--    1 root root       199 Oct  8 03:39 .env.local
+drwxr-xr-x   49 root root  64946176 Oct  8 04:36 .next
+drwxr-xr-x    6 root root     20480 Oct  8 04:32 app
+drwxr-xr-x    9 root root     45056 Oct  8 04:32 components
+drwxr-xr-x    3 root root      8192 Oct  8 04:32 hooks
+drwxr-xr-x    5 root root     16384 Oct  8 03:49 lib
+-rw-r--r--    1 root root       201 Oct  8 04:36 next-env.d.ts
+-rw-r--r--    1 root root       137 Oct  8 04:32 next.config.js
+drwxr-xr-x    2 root root      4096 Oct  8 04:49 node_modules
+-rw-r--r--    1 root root    226112 Oct  8 04:35 package-lock.json
+-rw-r--r--    1 root root      1015 Oct  8 04:35 package.json
+-rw-r--r--    1 root root        81 Oct  8 03:49 postcss.config.js
+-rw-r--r--    1 root root      1171 Oct  8 03:39 tailwind.config.ts
+-rw-r--r--    1 root root       611 Oct  8 03:49 tsconfig.json

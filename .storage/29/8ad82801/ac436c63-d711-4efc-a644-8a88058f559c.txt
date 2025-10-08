@@ -1,0 +1,1 @@
+$ mkdir -p /workspace/backend/{app/{core,models,schemas,api/{v1/endpoints},services,workers,utils},alembic/versions,scripts,tests}

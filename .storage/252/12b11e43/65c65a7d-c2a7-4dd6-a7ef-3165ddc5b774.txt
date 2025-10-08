@@ -1,0 +1,158 @@
+$ cd /workspace/frontend && npm install
+
+npm WARN deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm WARN deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm WARN deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm WARN deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm WARN deprecated @humanwhocodes/config-array@0.11.14: Use @eslint/config-array instead
+npm WARN deprecated eslint@8.57.0: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 444 packages, and audited 445 packages in 3m
+
+154 packages are looking for funding
+  run `npm fund` for details
+
+1 critical severity vulnerability
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm notice 
+npm notice New major version of npm available! 10.2.4 -> 11.6.1
+npm notice Changelog: <https://github.com/npm/cli/releases/tag/v11.6.1>
+npm notice Run `npm install -g npm@11.6.1` to update!
+npm notice 
+$ cd /workspace/frontend && npm run build
+
+
+> routix-frontend@1.0.0 build
+> next build
+
+ ⚠ Invalid next.config.js options detected: 
+ ⚠     Unrecognized key(s) in object: 'appDir' at "experimental"
+ ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./app/globals.css.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[3]!./app/globals.css
+Error: Cannot find module '@tailwindcss/forms'
+Require stack:
+- /workspace/frontend/tailwind.config.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /workspace/frontend/node_modules/next/dist/server/require-hook.js:55:36
+    at Function.resolve (node:internal/modules/helpers:187:19)
+    at _resolve (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:246378)
+    at jiti (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:249092)
+    at /workspace/frontend/tailwind.config.js:85:13
+    at evalModule (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:251913)
+    at jiti (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:249841)
+    at /workspace/frontend/node_modules/tailwindcss/lib/lib/load-config.js:53:30
+    at loadConfig (/workspace/frontend/node_modules/tailwindcss/lib/lib/load-config.js:55:6)
+
+Import trace for requested module:
+./app/globals.css.webpack[javascript/auto]!=!./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[3]!./app/globals.css
+./app/globals.css
+
+./app/globals.css
+Error: Cannot find module '@tailwindcss/forms'
+Require stack:
+- /workspace/frontend/tailwind.config.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /workspace/frontend/node_modules/next/dist/server/require-hook.js:55:36
+    at Function.resolve (node:internal/modules/helpers:187:19)
+    at _resolve (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:246378)
+    at jiti (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:249092)
+    at /workspace/frontend/tailwind.config.js:85:13
+    at evalModule (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:251913)
+    at jiti (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:249841)
+    at /workspace/frontend/node_modules/tailwindcss/lib/lib/load-config.js:53:30
+    at loadConfig (/workspace/frontend/node_modules/tailwindcss/lib/lib/load-config.js:55:6)
+    at tryRunOrWebpackError (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:312989)
+    at __webpack_require_module__ (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:131165)
+    at __nested_webpack_require_153728__ (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:130607)
+    at /workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:131454
+    at symbolIterator (/workspace/frontend/node_modules/next/dist/compiled/neo-async/async.js:1:14444)
+    at done (/workspace/frontend/node_modules/next/dist/compiled/neo-async/async.js:1:14824)
+    at Hook.eval [as callAsync] (eval at create (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:13:28858), <anonymous>:15:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:13:26012)
+    at /workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:130328
+    at symbolIterator (/workspace/frontend/node_modules/next/dist/compiled/neo-async/async.js:1:14402)
+-- inner error --
+Error: Cannot find module '@tailwindcss/forms'
+Require stack:
+- /workspace/frontend/tailwind.config.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /workspace/frontend/node_modules/next/dist/server/require-hook.js:55:36
+    at Function.resolve (node:internal/modules/helpers:187:19)
+    at _resolve (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:246378)
+    at jiti (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:249092)
+    at /workspace/frontend/tailwind.config.js:85:13
+    at evalModule (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:251913)
+    at jiti (/workspace/frontend/node_modules/jiti/dist/jiti.js:1:249841)
+    at /workspace/frontend/node_modules/tailwindcss/lib/lib/load-config.js:53:30
+    at loadConfig (/workspace/frontend/node_modules/tailwindcss/lib/lib/load-config.js:55:6)
+    at Object.<anonymous> (/workspace/frontend/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[2]!/workspace/frontend/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[3]!/workspace/frontend/app/globals.css:1:7)
+    at /workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:922493
+    at Hook.eval [as call] (eval at create (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:13:28636), <anonymous>:7:1)
+    at Hook.CALL_DELEGATE [as _call] (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:13:25906)
+    at /workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:131198
+    at tryRunOrWebpackError (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:312943)
+    at __webpack_require_module__ (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:131165)
+    at __nested_webpack_require_153728__ (/workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:130607)
+    at /workspace/frontend/node_modules/next/dist/compiled/webpack/bundle5.js:28:131454
+    at symbolIterator (/workspace/frontend/node_modules/next/dist/compiled/neo-async/async.js:1:14444)
+
+Generated code for /workspace/frontend/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[2]!/workspace/frontend/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[12].use[3]!/workspace/frontend/app/globals.css
+
+Import trace for requested module:
+./app/globals.css
+
+
+> Build failed because of webpack errors
+$ cd /workspace/frontend && npm install @tailwindcss/forms @tailwindcss/typography @tanstack/react-query axios framer-motion lucide-react sonner clsx tailwind-merge react-hook-form @hookform/resolvers zod react-dropzone recharts
+
+
+added 6 packages, and audited 451 packages in 7s
+
+154 packages are looking for funding
+  run `npm fund` for details
+
+1 critical severity vulnerability
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+$ cd /workspace/frontend && npm run build
+
+
+> routix-frontend@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+Failed to compile.
+
+./components/chat/ChatInterface.tsx:306:22
+Type error: Cannot find name 'Loader2'.
+
+[0m [90m 304 |[39m                 [33m>[39m[0m
+[0m [90m 305 |[39m                   {isPending [33m?[39m ([0m
+[0m[31m[1m>[22m[39m[90m 306 |[39m                     [33m<[39m[33mLoader2[39m className[33m=[39m[32m"w-5 h-5 animate-spin"[39m [33m/[39m[33m>[39m[0m
+[0m [90m     |[39m                      [31m[1m^[22m[39m[0m
+[0m [90m 307 |[39m                   ) [33m:[39m ([0m
+[0m [90m 308 |[39m                     [33m<[39m[33m>[39m[0m
+[0m [90m 309 |[39m                       [33m<[39m[33mspan[39m className[33m=[39m[32m"font-medium mr-2"[39m[33m>[39mارسال[33m<[39m[33m/[39m[33mspan[39m[33m>[39m[0m

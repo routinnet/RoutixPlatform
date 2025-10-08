@@ -1,0 +1,1 @@
+{"tasks": [{"task_id": "1", "dependent_task_ids": [], "instruction": "Create the backend directory structure and install PostgreSQL 15+ with pgvector extension", "task_type": "other", "code": "", "result": "", "is_success": false, "is_finished": false, "assignee": "David", "start_at": 1759880281.453088}], "current_task_id": "1"}
