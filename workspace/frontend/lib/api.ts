@@ -1,59 +1,148 @@
-import axios, { AxiosError } from 'axios'
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { toast } from 'sonner'
 
+const FALLBACK_API_URL = 'http://localhost:8000'
+const LOGIN_ROUTE = '/login'
+const REFRESH_ROUTE = '/api/v1/auth/refresh'
+const REQUEST_TIMEOUT = 30_000
+const isBrowser = typeof window !== 'undefined'
+
+type RefreshResponse = {
+  access_token: string
+}
+
+const resolveBaseUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim()
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '')
+  }
+
+  if (isBrowser) {
+    const { protocol, hostname, port } = window.location
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+    const effectivePort = isLocalhost ? '8000' : port
+    const portSegment = effectivePort ? `:${effectivePort}` : ''
+    return `${protocol}//${hostname}${portSegment}`
+  }
+
+  return FALLBACK_API_URL
+}
+
+const getStoredToken = (key: 'access_token' | 'refresh_token'): string | null => {
+  if (!isBrowser) return null
+  return window.localStorage.getItem(key)
+}
+
+const persistAccessToken = (token: string): void => {
+  if (!isBrowser) return
+  window.localStorage.setItem('access_token', token)
+}
+
+const clearStoredTokens = (): void => {
+  if (!isBrowser) return
+  window.localStorage.removeItem('access_token')
+  window.localStorage.removeItem('refresh_token')
+}
+
+const redirectToLogin = (): void => {
+  if (!isBrowser) return
+  window.location.href = LOGIN_ROUTE
+}
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  baseURL: resolveBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: REQUEST_TIMEOUT,
 })
 
-// Request interceptor (add auth token)
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
+let refreshTokenPromise: Promise<string | null> | null = null
 
-// Response interceptor (handle errors)
+const attachAccessToken = (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+  const token = getStoredToken('access_token')
+  if (token) {
+    config.headers = config.headers ?? {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+}
+
+api.interceptors.request.use(attachAccessToken, (error) => Promise.reject(error))
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (!isBrowser) return null
+
+  const refreshToken = getStoredToken('refresh_token')
+  if (!refreshToken) {
+    clearStoredTokens()
+    redirectToLogin()
+    return null
+  }
+
+  const { data } = await api.post<RefreshResponse>(REFRESH_ROUTE, {
+    refresh_token: refreshToken,
+  })
+
+  persistAccessToken(data.access_token)
+  api.defaults.headers.common.Authorization = `Bearer ${data.access_token}`
+  return data.access_token
+}
+
+const handleUnauthorized = async (
+  error: AxiosError,
+  originalRequest: InternalAxiosRequestConfig & { _retry?: boolean }
+) => {
+  if (originalRequest._retry) {
+    clearStoredTokens()
+    redirectToLogin()
+    return Promise.reject(error)
+  }
+
+  originalRequest._retry = true
+
+  try {
+    refreshTokenPromise = refreshTokenPromise ?? refreshAccessToken()
+    const newAccessToken = await refreshTokenPromise
+    refreshTokenPromise = null
+
+    if (!newAccessToken) {
+      return Promise.reject(error)
+    }
+
+    originalRequest.headers = {
+      ...(originalRequest.headers ?? {}),
+      Authorization: `Bearer ${newAccessToken}`,
+    }
+
+    return api(originalRequest)
+  } catch (refreshError) {
+    clearStoredTokens()
+    redirectToLogin()
+    return Promise.reject(refreshError)
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as any
-    
-    // Token expired - try refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-      
-      try {
-        const refreshToken = localStorage.getItem('refresh_token')
-        const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/refresh`,
-          { refresh_token: refreshToken }
-        )
-        
-        localStorage.setItem('access_token', data.access_token)
-        api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`
-        
-        return api(originalRequest)
-      } catch (refreshError) {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        window.location.href = '/login'
-        return Promise.reject(refreshError)
-      }
+    const originalRequest = (error.config || {}) as InternalAxiosRequestConfig & {
+      _retry?: boolean
     }
-    
-    // Show error toast
-    const message = (error.response?.data as any)?.detail || error.message || 'An error occurred'
-    toast.error(message)
-    
+
+    if (error.response?.status === 401 && isBrowser) {
+      return handleUnauthorized(error, originalRequest)
+    }
+
+    if (isBrowser) {
+      const message =
+        (error.response?.data as { detail?: string })?.detail ||
+        (error.message?.includes('Network Error')
+          ? 'Network error. Please check your connection and try again.'
+          : error.message || 'An unexpected error occurred')
+      toast.error(message)
+    }
+
     return Promise.reject(error)
   }
 )
@@ -84,9 +173,9 @@ export const apiClient = {
   getHistory: (params?: any) => api.get('/api/v1/generations/user', { params }),
   
   // Templates
-  uploadTemplate: (formData: FormData) => 
+  uploadTemplate: (formData: FormData) =>
     api.post('/api/v1/templates/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     }),
   getTemplates: (params?: any) => api.get('/api/v1/templates', { params }),
   searchTemplates: (query: string) => 

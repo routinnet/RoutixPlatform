@@ -1,19 +1,21 @@
-"""
-Routix Platform - Main FastAPI Application
-AI-powered thumbnail generation with chat interface
-"""
+"""Routix Platform FastAPI application entrypoint."""
+
+from __future__ import annotations
+
+import logging
+import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any, Dict
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import logging
-import time
-from typing import Dict, Any
+from sqlalchemy import text
 
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine
 from app.api.v1.api import api_router
 from app.core.exceptions import RouxixException
 
@@ -27,25 +29,25 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    logger.info("🚀 Starting Routix Platform...")
-    logger.info(f"Environment: {settings.ENVIRONMENT}")
-    logger.info(f"Debug mode: {settings.DEBUG}")
-    
-    # Create database tables (if needed)
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Run start-up and shutdown routines for the FastAPI app."""
+
+    logger.info("🚀 Starting Routix Platform…")
+    logger.info("Environment: %s", settings.ENVIRONMENT)
+    logger.info("Debug mode: %s", settings.is_debug)
+
+    # This is intentionally commented until database migrations are introduced.
     # async with engine.begin() as conn:
     #     await conn.run_sync(Base.metadata.create_all)
-    
+
     logger.info("✅ Routix Platform started successfully!")
-    
-    yield
-    
-    # Shutdown
-    logger.info("🛑 Shutting down Routix Platform...")
-    await engine.dispose()
-    logger.info("✅ Shutdown complete")
+
+    try:
+        yield
+    finally:
+        logger.info("🛑 Shutting down Routix Platform…")
+        await engine.dispose()
+        logger.info("✅ Shutdown complete")
 
 
 # Create FastAPI application
@@ -53,9 +55,9 @@ app = FastAPI(
     title="Routix Platform API",
     description="AI-powered thumbnail generation with chat interface",
     version="1.0.0",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json" if settings.DEBUG else None,
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if settings.is_debug else None,
+    docs_url="/docs" if settings.is_debug else None,
+    redoc_url="/redoc" if settings.is_debug else None,
     lifespan=lifespan
 )
 
@@ -79,10 +81,12 @@ app.add_middleware(
 # Request timing middleware
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
+    """Annotate responses with their processing duration."""
+
+    start_time = time.perf_counter()
     response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = f"{process_time:.6f}"
     return response
 
 
@@ -101,7 +105,9 @@ async def routix_exception_handler(request: Request, exc: RouxixException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    """Fallback handler for uncaught exceptions."""
+
+    logger.exception("Unhandled exception during request")
     return JSONResponse(
         status_code=500,
         content={
@@ -114,7 +120,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Health check endpoints
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
-    """Basic health check"""
+    """Basic health check."""
     return {
         "status": "healthy",
         "service": "routix-platform",
@@ -125,7 +131,7 @@ async def health_check() -> Dict[str, Any]:
 
 @app.get("/health/detailed")
 async def detailed_health_check() -> Dict[str, Any]:
-    """Detailed health check with database connectivity"""
+    """Detailed health check with database connectivity."""
     from app.core.database import get_db_session
     
     health_status = {
@@ -139,7 +145,9 @@ async def detailed_health_check() -> Dict[str, Any]:
     # Database check
     try:
         async with get_db_session() as db:
-            await db.execute("SELECT 1")
+            # SQLAlchemy 2.0 requires textual SQL to be wrapped in text() to avoid
+            # ArgumentError in async contexts, so the health check always succeeds.
+            await db.execute(text("SELECT 1"))
         health_status["checks"]["database"] = {"status": "healthy"}
     except Exception as e:
         health_status["status"] = "unhealthy"
@@ -157,10 +165,12 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Root endpoint
 @app.get("/")
-async def root():
+async def root() -> Dict[str, Any]:
+    """Return a friendly landing payload for the API root."""
+
     return {
         "message": "Welcome to Routix Platform API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health"
+        "version": settings.VERSION,
+        "docs": "/docs" if settings.is_debug else None,
+        "health": "/health",
     }
