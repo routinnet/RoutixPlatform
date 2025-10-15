@@ -261,6 +261,204 @@ async def get_generation_analytics(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get analytics: {str(e)}")
 
+@router.get("/user", response_model=Dict[str, Any])
+async def get_user_generations(
+    limit: int = Query(20, ge=1, le=100, description="Maximum results to return"),
+    offset: int = Query(0, ge=0, description="Results offset for pagination"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get user's generation history (alias for /history endpoint)
+    """
+    try:
+        history_data = await generation_service.get_generation_history(
+            user_id=current_user.id,
+            limit=limit,
+            offset=offset,
+            status_filter=status
+        )
+        
+        return {
+            "success": True,
+            "data": history_data,
+            "message": "History retrieved successfully"
+        }
+        
+    except GenerationServiceError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get history: {str(e)}")
+
+@router.get("/{generation_id}/download", response_model=Dict[str, Any])
+async def download_generation(
+    generation_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Download a completed generation
+    """
+    try:
+        result_data = await generation_service.get_generation_result(
+            generation_id=generation_id,
+            user_id=current_user.id
+        )
+        
+        # Return download URL
+        download_url = result_data.get("thumbnail_url")
+        
+        return {
+            "success": True,
+            "data": {
+                "generation_id": generation_id,
+                "download_url": download_url,
+                "filename": f"routix_thumbnail_{generation_id}.png"
+            },
+            "message": "Download link generated successfully"
+        }
+        
+    except GenerationServiceError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate download link: {str(e)}")
+
+@router.post("/{generation_id}/favorite", response_model=Dict[str, Any])
+async def favorite_generation(
+    generation_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Mark a generation as favorite
+    """
+    try:
+        from app.services.redis_service import redis_service
+        
+        # Store favorite in Redis
+        favorite_key = f"user:{current_user.id}:favorites"
+        await redis_service.sadd(favorite_key, generation_id)
+        
+        return {
+            "success": True,
+            "data": {
+                "generation_id": generation_id,
+                "is_favorite": True
+            },
+            "message": "Generation marked as favorite"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to favorite generation: {str(e)}")
+
+@router.delete("/{generation_id}/favorite", response_model=Dict[str, Any])
+async def unfavorite_generation(
+    generation_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Remove a generation from favorites
+    """
+    try:
+        from app.services.redis_service import redis_service
+        
+        # Remove favorite from Redis
+        favorite_key = f"user:{current_user.id}:favorites"
+        await redis_service.srem(favorite_key, generation_id)
+        
+        return {
+            "success": True,
+            "data": {
+                "generation_id": generation_id,
+                "is_favorite": False
+            },
+            "message": "Generation removed from favorites"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to unfavorite generation: {str(e)}")
+
+@router.post("/{generation_id}/share", response_model=Dict[str, Any])
+async def share_generation(
+    generation_id: str,
+    data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Share a generation (create public share link)
+    """
+    try:
+        import secrets
+        from app.services.redis_service import redis_service
+        
+        # Generate share token
+        share_token = secrets.token_urlsafe(16)
+        share_key = f"share:{share_token}"
+        
+        # Store share data in Redis (expires in 30 days)
+        share_data = {
+            "generation_id": generation_id,
+            "user_id": current_user.id,
+            "created_at": data.get("created_at", ""),
+            "expires_at": data.get("expires_at", "")
+        }
+        
+        await redis_service.set(share_key, str(share_data), 30 * 24 * 60 * 60)
+        
+        # Create public share URL
+        share_url = f"/share/{share_token}"
+        
+        return {
+            "success": True,
+            "data": {
+                "generation_id": generation_id,
+                "share_token": share_token,
+                "share_url": share_url,
+                "expires_in_days": 30
+            },
+            "message": "Share link created successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create share link: {str(e)}")
+
+@router.delete("/{generation_id}", response_model=Dict[str, Any])
+async def delete_generation(
+    generation_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a generation
+    """
+    try:
+        from app.services.redis_service import redis_service
+        
+        # Verify ownership
+        result_data = await generation_service.get_generation_result(
+            generation_id=generation_id,
+            user_id=current_user.id
+        )
+        
+        # Delete from storage (mock implementation)
+        generation_key = f"generation:{generation_id}"
+        await redis_service.delete(generation_key)
+        
+        # Remove from user's history
+        user_generations_key = f"user:{current_user.id}:generations"
+        await redis_service.lrem(user_generations_key, generation_id, 0)
+        
+        return {
+            "success": True,
+            "data": {
+                "generation_id": generation_id,
+                "deleted": True
+            },
+            "message": "Generation deleted successfully"
+        }
+        
+    except GenerationServiceError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete generation: {str(e)}")
+
 @router.post("/batch", response_model=Dict[str, Any])
 async def create_batch_generation(
     requests: list[GenerationCreateRequest],
