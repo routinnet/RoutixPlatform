@@ -1,3 +1,0 @@
-$ cd /workspace/shadcn-ui
-$ cd /workspace && mkdir -p frontend && cd frontend
-
