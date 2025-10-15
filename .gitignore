@@ -1,0 +1,127 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Build outputs
+build/
+dist/
+*.min.js
+*.min.css
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Media files (don't commit to git)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.mp4
+*.webm
+*.svg
+!workspace/shadcn-ui/public/robots.txt
+
+# PDF files
+*.pdf
+
+# Uploads directory
+workspace/uploads/*.jpg
+workspace/uploads/*.png
+workspace/uploads/*.jpeg
+workspace/backend/uploads/
+workspace/backend/public/images/
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Storage cache
+.storage/
+.MGXTools/
+.MGXEnv.json
+.timeline.json
+.wiki.md
+
+# Docker
+docker-compose.override.yml
+
+# Alembic
+alembic.ini.backup
