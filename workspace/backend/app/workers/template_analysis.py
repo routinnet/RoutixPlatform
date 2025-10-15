@@ -6,7 +6,7 @@ import asyncio
 import json
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from celery import current_task
 from app.workers.celery_app import celery_app
@@ -48,7 +48,7 @@ def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, A
     start_time = time.time()
     
     try:
-        logger.info(f"[{datetime.utcnow()}] Starting template analysis for: {template_id}")
+        logger.info(f"[{datetime.now(timezone.utc)}] Starting template analysis for: {template_id}")
         
         # Step 1: Update status → "analyzing" (10%)
         logger.info(f"Step 1: Updating status to analyzing")
@@ -90,7 +90,7 @@ def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, A
         asyncio.run(broadcast_analysis_progress(template_id, 100, "analyzed", "Analysis completed successfully! 🎉"))
         
         processing_time = time.time() - start_time
-        logger.info(f"[{datetime.utcnow()}] Template analysis completed: {template_id} in {processing_time:.2f}s")
+        logger.info(f"[{datetime.now(timezone.utc)}] Template analysis completed: {template_id} in {processing_time:.2f}s")
         
         return {
             "template_id": template_id,
@@ -150,7 +150,7 @@ def batch_analyze_templates_task(template_ids: List[str]) -> Dict[str, Any]:
         Batch processing result with status and tracking info
     """
     try:
-        logger.info(f"[{datetime.utcnow()}] Starting batch template analysis for {len(template_ids)} templates")
+        logger.info(f"[{datetime.now(timezone.utc)}] Starting batch template analysis for {len(template_ids)} templates")
         
         from celery import group
         
@@ -178,7 +178,7 @@ def batch_analyze_templates_task(template_ids: List[str]) -> Dict[str, Any]:
             "total_templates": len(template_ids),
             "status": "processing",
             "template_ids": template_ids,
-            "started_at": datetime.utcnow().isoformat()
+            "started_at": datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
@@ -187,7 +187,7 @@ def batch_analyze_templates_task(template_ids: List[str]) -> Dict[str, Any]:
             "status": "failed",
             "error": str(e),
             "template_ids": template_ids,
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }
 
 # Pipeline Step Functions
@@ -200,7 +200,7 @@ async def update_template_status(template_id: str, status: str, progress: int, m
             "analysis_status": status,
             "analysis_progress": progress,
             "analysis_message": message,
-            "updated_at": datetime.utcnow().isoformat()
+            "updated_at": datetime.now(timezone.utc).isoformat()
         })
         
         # Broadcast progress
@@ -333,7 +333,7 @@ async def parse_design_dna(template_id: str, ai_analysis: Dict[str, Any]) -> Dic
             "service_used": ai_analysis.get("service_used", "unknown"),
             "confidence": ai_analysis.get("confidence", 0.5),
             "processing_time": ai_analysis.get("processing_time", 0),
-            "analyzed_at": datetime.utcnow().isoformat()
+            "analyzed_at": datetime.now(timezone.utc).isoformat()
         }
         
         logger.info(f"Design DNA parsed for {template_id}: {len(design_dna)} attributes")
@@ -391,7 +391,7 @@ async def update_template_analysis_results(
                 "confidence": ai_analysis.get("confidence", 0.8),
                 "embedding_model": embedding_data.get("model_used", "text-embedding-3-small"),
                 "embedding_dimensions": embedding_data.get("dimensions", 1536),
-                "analyzed_at": datetime.utcnow().isoformat()
+                "analyzed_at": datetime.now(timezone.utc).isoformat()
             }
         }
         
@@ -412,7 +412,7 @@ async def finalize_template_analysis(template_id: str, start_time: float) -> Non
         await template_service.update_template_status(template_id, {
             "analysis_status": "analyzed",
             "analysis_progress": 100,
-            "analysis_completed_at": datetime.utcnow().isoformat(),
+            "analysis_completed_at": datetime.now(timezone.utc).isoformat(),
             "analysis_processing_time": processing_time
         })
         
@@ -435,7 +435,7 @@ async def broadcast_analysis_progress(template_id: str, progress: int, status: s
             "progress": progress,
             "status": status,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         # Broadcast to Redis pub/sub for real-time updates
@@ -464,7 +464,7 @@ async def handle_analysis_failure(template_id: str, error_message: str) -> None:
             "analysis_status": "analysis_failed",
             "analysis_progress": 0,
             "analysis_error": error_message,
-            "analysis_failed_at": datetime.utcnow().isoformat()
+            "analysis_failed_at": datetime.now(timezone.utc).isoformat()
         }
         
         await template_service.update_template_status(template_id, failure_data)
@@ -667,7 +667,7 @@ async def track_batch_analysis(batch_id: str, template_ids: List[str]) -> None:
             "batch_id": batch_id,
             "template_ids": template_ids,
             "total_templates": len(template_ids),
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
             "status": "processing"
         }
         
@@ -686,7 +686,7 @@ async def track_analysis_completion(template_id: str, processing_time: float) ->
             "template_id": template_id,
             "event": "analysis_completed",
             "processing_time": processing_time,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         await redis_service.lpush(f"analytics:template_analysis", analytics_data)
@@ -702,7 +702,7 @@ async def track_analysis_failure(template_id: str, error_message: str) -> None:
             "template_id": template_id,
             "event": "analysis_failed",
             "error": error_message,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         await redis_service.lpush(f"analytics:template_failures", failure_data)

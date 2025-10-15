@@ -3,7 +3,7 @@ Routix Platform Security
 JWT authentication, password hashing, and security utilities
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -31,9 +31,9 @@ def create_access_token(
 ) -> str:
     """Create JWT access token"""
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
+        expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
     
@@ -52,8 +52,8 @@ def create_access_token(
 
 def create_refresh_token(subject: Union[str, Any]) -> str:
     """Create JWT refresh token"""
-    expire = datetime.utcnow() + timedelta(
-        minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
     
     to_encode = {
@@ -79,7 +79,7 @@ def verify_token(token: str, token_type: str = "access") -> Optional[str]:
             
         # Check expiration
         exp = payload.get("exp")
-        if exp is None or datetime.fromtimestamp(exp) < datetime.utcnow():
+        if exp is None or datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
             return None
             
         # Get subject (user ID)
@@ -146,7 +146,7 @@ jwt_bearer = JWTBearer()
 
 def create_password_reset_token(email: str) -> str:
     """Create password reset token"""
-    expire = datetime.utcnow() + timedelta(hours=1)  # 1 hour expiry
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
     
     to_encode = {
         "exp": expire,
@@ -165,7 +165,7 @@ def verify_password_reset_token(token: str) -> Optional[str]:
 
 def create_email_verification_token(email: str) -> str:
     """Create email verification token"""
-    expire = datetime.utcnow() + timedelta(days=7)  # 7 days expiry
+    expire = datetime.now(timezone.utc) + timedelta(days=7)  # 7 days expiry
     
     to_encode = {
         "exp": expire,
@@ -191,7 +191,7 @@ class RateLimiter:
     
     def is_allowed(self, key: str, limit: int, window: int = 60) -> bool:
         """Check if request is allowed within rate limit"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         if key not in self._requests:
             self._requests[key] = []
@@ -199,7 +199,7 @@ class RateLimiter:
         # Remove old requests outside window
         self._requests[key] = [
             req_time for req_time in self._requests[key]
-            if (now - req_time).seconds < window
+            if (now - req_time).total_seconds() < window
         ]
         
         # Check if under limit

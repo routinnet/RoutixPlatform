@@ -3,7 +3,7 @@ Test script for Redis and Celery functionality
 """
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.redis_service import redis_service
 from app.workers.celery_app import celery_app
 from app.workers.test_tasks import (
@@ -24,7 +24,7 @@ async def test_redis_connection():
         
         # Test basic operations
         test_key = "test:redis:connection"
-        test_value = {"message": "Hello Redis!", "timestamp": datetime.utcnow().isoformat()}
+        test_value = {"message": "Hello Redis!", "timestamp": datetime.now(timezone.utc).isoformat()}
         
         # Set value
         set_result = await redis_service.set(test_key, test_value, 60)
@@ -165,7 +165,7 @@ async def test_redis_celery_integration():
         cache_data = {
             "task_id": task_id,
             "status": "processing",
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         cache_result = await redis_service.set(cache_key, cache_data, 300)
@@ -180,7 +180,7 @@ async def test_redis_celery_integration():
         message = {
             "type": "test_message",
             "content": "Integration test message",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         publish_result = await redis_service.publish(channel, message)

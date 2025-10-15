@@ -4,8 +4,12 @@ Redis service for caching and pub/sub operations
 import json
 import redis
 from typing import Any, Dict, List, Optional, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.core.config import settings
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class RedisService:
     """Redis service for caching, sessions, and pub/sub"""
@@ -25,7 +29,7 @@ class RedisService:
         try:
             return self.redis_client.ping()
         except Exception as e:
-            print(f"Redis ping failed: {e}")
+            logger.info(f"Redis ping failed: {e}")
             return False
     
     # Cache operations
@@ -37,7 +41,7 @@ class RedisService:
                 return json.loads(value)
             return None
         except Exception as e:
-            print(f"Redis get failed for key {key}: {e}")
+            logger.info(f"Redis get failed for key {key}: {e}")
             return None
     
     async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
@@ -47,7 +51,7 @@ class RedisService:
             serialized_value = json.dumps(value, default=str)
             return self.redis_client.setex(key, ttl, serialized_value)
         except Exception as e:
-            print(f"Redis set failed for key {key}: {e}")
+            logger.info(f"Redis set failed for key {key}: {e}")
             return False
     
     async def delete(self, key: str) -> bool:
@@ -55,7 +59,7 @@ class RedisService:
         try:
             return bool(self.redis_client.delete(key))
         except Exception as e:
-            print(f"Redis delete failed for key {key}: {e}")
+            logger.info(f"Redis delete failed for key {key}: {e}")
             return False
     
     async def exists(self, key: str) -> bool:
@@ -63,7 +67,23 @@ class RedisService:
         try:
             return bool(self.redis_client.exists(key))
         except Exception as e:
-            print(f"Redis exists check failed for key {key}: {e}")
+            logger.info(f"Redis exists check failed for key {key}: {e}")
+            return False
+    
+    async def incr(self, key: str, amount: int = 1) -> int:
+        """Increment value of key"""
+        try:
+            return self.redis_client.incr(key, amount)
+        except Exception as e:
+            logger.info(f"Redis incr failed for key {key}: {e}")
+            return 0
+    
+    async def expire(self, key: str, seconds: int) -> bool:
+        """Set expiration time for key"""
+        try:
+            return bool(self.redis_client.expire(key, seconds))
+        except Exception as e:
+            logger.info(f"Redis expire failed for key {key}: {e}")
             return False
     
     # Hash operations
@@ -75,7 +95,7 @@ class RedisService:
                 return json.loads(value)
             return None
         except Exception as e:
-            print(f"Redis hget failed for {name}.{key}: {e}")
+            logger.info(f"Redis hget failed for {name}.{key}: {e}")
             return None
     
     async def hset(self, name: str, key: str, value: Any) -> bool:
@@ -84,7 +104,7 @@ class RedisService:
             serialized_value = json.dumps(value, default=str)
             return bool(self.redis_client.hset(name, key, serialized_value))
         except Exception as e:
-            print(f"Redis hset failed for {name}.{key}: {e}")
+            logger.info(f"Redis hset failed for {name}.{key}: {e}")
             return False
     
     async def hgetall(self, name: str) -> Dict[str, Any]:
@@ -93,7 +113,7 @@ class RedisService:
             hash_data = self.redis_client.hgetall(name)
             return {k: json.loads(v) for k, v in hash_data.items()}
         except Exception as e:
-            print(f"Redis hgetall failed for {name}: {e}")
+            logger.info(f"Redis hgetall failed for {name}: {e}")
             return {}
     
     # List operations
@@ -103,7 +123,7 @@ class RedisService:
             serialized_values = [json.dumps(v, default=str) for v in values]
             return self.redis_client.lpush(name, *serialized_values)
         except Exception as e:
-            print(f"Redis lpush failed for {name}: {e}")
+            logger.info(f"Redis lpush failed for {name}: {e}")
             return 0
     
     async def rpop(self, name: str) -> Optional[Any]:
@@ -114,7 +134,7 @@ class RedisService:
                 return json.loads(value)
             return None
         except Exception as e:
-            print(f"Redis rpop failed for {name}: {e}")
+            logger.info(f"Redis rpop failed for {name}: {e}")
             return None
     
     async def llen(self, name: str) -> int:
@@ -122,8 +142,17 @@ class RedisService:
         try:
             return self.redis_client.llen(name)
         except Exception as e:
-            print(f"Redis llen failed for {name}: {e}")
+            logger.info(f"Redis llen failed for {name}: {e}")
             return 0
+    
+    async def lrange(self, name: str, start: int, end: int) -> List[Any]:
+        """Get range of elements from list"""
+        try:
+            values = self.redis_client.lrange(name, start, end)
+            return [json.loads(v) for v in values] if values else []
+        except Exception as e:
+            logger.info(f"Redis lrange failed for {name}: {e}")
+            return []
     
     # Pub/Sub operations
     async def publish(self, channel: str, message: Dict[str, Any]) -> int:
@@ -132,7 +161,7 @@ class RedisService:
             serialized_message = json.dumps(message, default=str)
             return self.redis_client.publish(channel, serialized_message)
         except Exception as e:
-            print(f"Redis publish failed for channel {channel}: {e}")
+            logger.info(f"Redis publish failed for channel {channel}: {e}")
             return 0
     
     # Session management
@@ -155,7 +184,7 @@ class RedisService:
     async def check_rate_limit(self, key: str, limit: int, window: int) -> Dict[str, Any]:
         """Check rate limit for key (sliding window)"""
         try:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
             window_start = current_time - timedelta(seconds=window)
             
             # Use sorted set for sliding window
@@ -175,7 +204,7 @@ class RedisService:
                 'reset_time': (current_time + timedelta(seconds=window)).isoformat()
             }
         except Exception as e:
-            print(f"Rate limit check failed for {key}: {e}")
+            logger.info(f"Rate limit check failed for {key}: {e}")
             return {'allowed': True, 'count': 0, 'limit': limit}
     
     # Cache specific methods for Routix

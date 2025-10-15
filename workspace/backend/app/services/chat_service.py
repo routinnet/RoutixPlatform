@@ -4,7 +4,7 @@ Handles conversation creation, message management, and AI-powered features
 """
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Union
 from enum import Enum
 import uuid
@@ -12,6 +12,10 @@ import re
 from app.core.config import settings
 from app.services.ai_service import vision_ai_service, embedding_service, AIServiceError
 from app.services.redis_service import redis_service
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class ConversationType(str, Enum):
     """Conversation type enumeration"""
@@ -74,7 +78,7 @@ class ChatService:
             Created conversation data
         """
         try:
-            print(f"[{datetime.utcnow()}] Creating conversation for user {user_id}")
+            logger.info(f"Creating conversation for user {user_id}")
             
             # Generate conversation ID
             conversation_id = self._generate_conversation_id()
@@ -92,9 +96,9 @@ class ChatService:
                 "type": conversation_type,
                 "creator_id": user_id,
                 "participants": participants,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
-                "last_activity": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "last_activity": datetime.now(timezone.utc).isoformat(),
                 "message_count": 0,
                 "is_active": True,
                 "auto_titled": False,
@@ -112,7 +116,7 @@ class ChatService:
             # Track conversation creation
             await self._track_conversation_event(conversation_id, "created", user_id)
             
-            print(f"[{datetime.utcnow()}] Conversation created: {conversation_id}")
+            logger.info(f"Conversation created: {conversation_id}")
             
             return {
                 "conversation": conversation_data,
@@ -120,7 +124,7 @@ class ChatService:
             }
             
         except Exception as e:
-            print(f"Conversation creation failed: {e}")
+            logger.info(f"Conversation creation failed: {e}")
             raise ChatServiceError(f"Failed to create conversation: {str(e)}")
     
     async def get_conversations(
@@ -173,7 +177,7 @@ class ChatService:
             }
             
         except Exception as e:
-            print(f"Failed to get conversations for user {user_id}: {e}")
+            logger.info(f"Failed to get conversations for user {user_id}: {e}")
             raise ChatServiceError(f"Failed to get conversations: {str(e)}")
     
     async def get_conversation(
@@ -220,7 +224,7 @@ class ChatService:
             return conversation_data
             
         except Exception as e:
-            print(f"Failed to get conversation {conversation_id}: {e}")
+            logger.info(f"Failed to get conversation {conversation_id}: {e}")
             raise ChatServiceError(f"Failed to get conversation: {str(e)}")
     
     async def send_message(
@@ -249,7 +253,7 @@ class ChatService:
             Sent message data
         """
         try:
-            print(f"[{datetime.utcnow()}] Sending message to conversation {conversation_id}")
+            logger.info(f"Sending message to conversation {conversation_id}")
             
             # Validate conversation access
             conversation_data = await self._get_cached_conversation_data(conversation_id)
@@ -275,8 +279,8 @@ class ChatService:
                 "reply_to": reply_to,
                 "attachments": attachments or [],
                 "metadata": metadata or {},
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
                 "edited": False,
                 "reactions": {},
                 "thread_messages": []
@@ -295,7 +299,7 @@ class ChatService:
             # Track message sent
             await self._track_conversation_event(conversation_id, "message_sent", user_id)
             
-            print(f"[{datetime.utcnow()}] Message sent: {message_id}")
+            logger.info(f"Message sent: {message_id}")
             
             return {
                 "message": message_data,
@@ -303,7 +307,7 @@ class ChatService:
             }
             
         except Exception as e:
-            print(f"Failed to send message: {e}")
+            logger.info(f"Failed to send message: {e}")
             raise ChatServiceError(f"Failed to send message: {str(e)}")
     
     async def update_conversation_title(
@@ -343,7 +347,7 @@ class ChatService:
             
             # Update title
             conversation_data["title"] = new_title.strip()
-            conversation_data["updated_at"] = datetime.utcnow().isoformat()
+            conversation_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             conversation_data["auto_titled"] = False  # Manual title override
             
             # Update cache
@@ -358,7 +362,7 @@ class ChatService:
             }
             
         except Exception as e:
-            print(f"Failed to update conversation title {conversation_id}: {e}")
+            logger.info(f"Failed to update conversation title {conversation_id}: {e}")
             raise ChatServiceError(f"Failed to update title: {str(e)}")
     
     async def delete_conversation(
@@ -392,7 +396,7 @@ class ChatService:
             if soft_delete:
                 # Soft delete - mark as inactive
                 conversation_data["is_active"] = False
-                conversation_data["deleted_at"] = datetime.utcnow().isoformat()
+                conversation_data["deleted_at"] = datetime.now(timezone.utc).isoformat()
                 conversation_data["deleted_by"] = user_id
                 
                 await self._cache_conversation_data(conversation_id, conversation_data)
@@ -410,7 +414,7 @@ class ChatService:
                 result = {
                     "conversation_id": conversation_id,
                     "action": "hard_deleted",
-                    "deleted_at": datetime.utcnow().isoformat()
+                    "deleted_at": datetime.now(timezone.utc).isoformat()
                 }
             
             # Track deletion
@@ -419,7 +423,7 @@ class ChatService:
             return result
             
         except Exception as e:
-            print(f"Failed to delete conversation {conversation_id}: {e}")
+            logger.info(f"Failed to delete conversation {conversation_id}: {e}")
             raise ChatServiceError(f"Failed to delete conversation: {str(e)}")
     
     async def search_conversations(
@@ -442,7 +446,7 @@ class ChatService:
             Search results
         """
         try:
-            print(f"[{datetime.utcnow()}] Searching conversations for user {user_id}: '{query}'")
+            logger.info(f"Searching conversations for user {user_id}: '{query}'")
             
             search_results = []
             
@@ -476,7 +480,7 @@ class ChatService:
             }
             
         except Exception as e:
-            print(f"Search failed for user {user_id}: {e}")
+            logger.info(f"Search failed for user {user_id}: {e}")
             raise ChatServiceError(f"Search failed: {str(e)}")
     
     async def export_conversation(
@@ -515,7 +519,7 @@ class ChatService:
             export_data = {
                 "conversation": conversation_data,
                 "messages": messages,
-                "exported_at": datetime.utcnow().isoformat(),
+                "exported_at": datetime.now(timezone.utc).isoformat(),
                 "exported_by": user_id,
                 "format": format
             }
@@ -531,7 +535,7 @@ class ChatService:
                 result = {
                     "export_type": "json",
                     "data": export_data,
-                    "filename": f"conversation_{conversation_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+                    "filename": f"conversation_{conversation_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
                 }
             
             elif format == "txt":
@@ -540,7 +544,7 @@ class ChatService:
                 result = {
                     "export_type": "txt",
                     "content": text_content,
-                    "filename": f"conversation_{conversation_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.txt"
+                    "filename": f"conversation_{conversation_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.txt"
                 }
             
             elif format == "pdf":
@@ -548,7 +552,7 @@ class ChatService:
                 result = {
                     "export_type": "pdf",
                     "message": "PDF export queued - download link will be sent via email",
-                    "filename": f"conversation_{conversation_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    "filename": f"conversation_{conversation_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
                 }
             
             else:
@@ -560,18 +564,18 @@ class ChatService:
             return result
             
         except Exception as e:
-            print(f"Export failed for conversation {conversation_id}: {e}")
+            logger.info(f"Export failed for conversation {conversation_id}: {e}")
             raise ChatServiceError(f"Export failed: {str(e)}")
     
     # Private helper methods
     
     def _generate_conversation_id(self) -> str:
         """Generate unique conversation ID"""
-        return f"conv_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        return f"conv_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
     
     def _generate_message_id(self) -> str:
         """Generate unique message ID"""
-        return f"msg_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        return f"msg_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
     
     async def _cache_conversation_data(self, conversation_id: str, data: Dict[str, Any]) -> None:
         """Cache conversation data"""
@@ -606,8 +610,8 @@ class ChatService:
         conversation_data = await self._get_cached_conversation_data(conversation_id)
         
         if conversation_data:
-            conversation_data["updated_at"] = datetime.utcnow().isoformat()
-            conversation_data["last_activity"] = datetime.utcnow().isoformat()
+            conversation_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+            conversation_data["last_activity"] = datetime.now(timezone.utc).isoformat()
             conversation_data["message_count"] = conversation_data.get("message_count", 0) + 1
             
             await self._cache_conversation_data(conversation_id, conversation_data)
@@ -634,14 +638,14 @@ class ChatService:
                     if new_title:
                         conversation_data["title"] = new_title
                         conversation_data["auto_titled"] = True
-                        conversation_data["updated_at"] = datetime.utcnow().isoformat()
+                        conversation_data["updated_at"] = datetime.now(timezone.utc).isoformat()
                         
                         await self._cache_conversation_data(conversation_id, conversation_data)
                         
-                        print(f"Auto-titled conversation {conversation_id}: '{new_title}'")
+                        logger.info(f"Auto-titled conversation {conversation_id}: '{new_title}'")
         
         except Exception as e:
-            print(f"Auto-titling failed for conversation {conversation_id}: {e}")
+            logger.info(f"Auto-titling failed for conversation {conversation_id}: {e}")
     
     async def _generate_ai_title(self, messages: List[Dict[str, Any]]) -> Optional[str]:
         """Generate conversation title using AI"""
@@ -668,7 +672,7 @@ class ChatService:
             return title or "Conversation"
             
         except Exception as e:
-            print(f"AI title generation failed: {e}")
+            logger.info(f"AI title generation failed: {e}")
             return None
     
     async def _validate_message_content(self, content: str, message_type: MessageType) -> None:
@@ -691,7 +695,7 @@ class ChatService:
             "conversation_id": conversation_id,
             "event": event,
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         analytics_key = f"analytics:conversation:{conversation_id}"
@@ -718,8 +722,8 @@ class ChatService:
                 "type": conversation_type or ConversationType.GENERAL,
                 "creator_id": user_id,
                 "participants": [user_id],
-                "created_at": (datetime.utcnow() - timedelta(hours=i)).isoformat(),
-                "updated_at": (datetime.utcnow() - timedelta(minutes=i * 10)).isoformat(),
+                "created_at": (datetime.now(timezone.utc) - timedelta(hours=i)).isoformat(),
+                "updated_at": (datetime.now(timezone.utc) - timedelta(minutes=i * 10)).isoformat(),
                 "message_count": 5 + i,
                 "is_active": True
             })
@@ -755,7 +759,7 @@ class ChatService:
     async def _update_last_read(self, conversation_id: str, user_id: str) -> None:
         """Update user's last read timestamp"""
         last_read_key = f"last_read:{conversation_id}:{user_id}"
-        await redis_service.set(last_read_key, datetime.utcnow().isoformat(), 86400 * 7)
+        await redis_service.set(last_read_key, datetime.now(timezone.utc).isoformat(), 86400 * 7)
     
     async def _search_conversation_messages(
         self,

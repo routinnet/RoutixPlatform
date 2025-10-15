@@ -6,7 +6,7 @@ import asyncio
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Union, Tuple
 from pathlib import Path
 import aiofiles
@@ -16,6 +16,10 @@ from app.core.config import settings
 from app.services.ai_service import vision_ai_service, embedding_service, AIServiceError
 from app.services.redis_service import redis_service
 from app.workers.ai_tasks import analyze_template_task
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class TemplateServiceError(Exception):
     """Custom exception for template service errors"""
@@ -68,7 +72,7 @@ class TemplateService:
             Dict containing template data and analysis results
         """
         try:
-            print(f"[{datetime.utcnow()}] Starting template upload: {filename}")
+            logger.info(f"Starting template upload: {filename}")
             
             # Validate file
             await self._validate_file(file_content, filename)
@@ -91,8 +95,8 @@ class TemplateService:
                 "file_path": str(file_path),
                 "file_size": len(file_content),
                 "status": "uploaded",
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
                 "analysis_status": "pending" if auto_analyze else "skipped",
                 "view_count": 0,
                 "download_count": 0,
@@ -116,10 +120,10 @@ class TemplateService:
                     template_data["analysis_task_id"] = analysis_task_id
                     template_data["analysis_status"] = "processing"
                     
-                    print(f"AI analysis queued for template {template_id}: {analysis_task_id}")
+                    logger.info(f"AI analysis queued for template {template_id}: {analysis_task_id}")
                     
                 except Exception as e:
-                    print(f"Failed to queue AI analysis: {e}")
+                    logger.info(f"Failed to queue AI analysis: {e}")
                     template_data["analysis_status"] = "failed"
                     template_data["analysis_error"] = str(e)
             
@@ -130,7 +134,7 @@ class TemplateService:
             if self.analytics_enabled:
                 await self._track_template_event(template_id, "uploaded", user_id)
             
-            print(f"[{datetime.utcnow()}] Template upload completed: {template_id}")
+            logger.info(f"Template upload completed: {template_id}")
             
             return {
                 "template": template_data,
@@ -139,7 +143,7 @@ class TemplateService:
             }
             
         except Exception as e:
-            print(f"Template upload failed: {e}")
+            logger.info(f"Template upload failed: {e}")
             raise TemplateServiceError(f"Upload failed: {str(e)}")
     
     async def get_template(self, template_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
@@ -174,7 +178,7 @@ class TemplateService:
             return template_data
             
         except Exception as e:
-            print(f"Failed to get template {template_id}: {e}")
+            logger.info(f"Failed to get template {template_id}: {e}")
             raise TemplateServiceError(f"Failed to get template: {str(e)}")
     
     async def search_templates(
@@ -203,7 +207,7 @@ class TemplateService:
             Search results with similarity scores
         """
         try:
-            print(f"[{datetime.utcnow()}] Starting template search")
+            logger.info(f"Starting template search")
             
             results = []
             
@@ -236,7 +240,7 @@ class TemplateService:
                 "total_found": len(filtered_results),
                 "returned": len(final_results),
                 "similarity_threshold": similarity_threshold,
-                "search_time": datetime.utcnow().isoformat()
+                "search_time": datetime.now(timezone.utc).isoformat()
             }
             
             return {
@@ -245,7 +249,7 @@ class TemplateService:
             }
             
         except Exception as e:
-            print(f"Template search failed: {e}")
+            logger.info(f"Template search failed: {e}")
             raise TemplateServiceError(f"Search failed: {str(e)}")
     
     async def update_template(
@@ -282,7 +286,7 @@ class TemplateService:
                 if field in updates:
                     template_data[field] = updates[field]
             
-            template_data["updated_at"] = datetime.utcnow().isoformat()
+            template_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             
             # Update cache
             await self._cache_template_data(template_id, template_data)
@@ -294,7 +298,7 @@ class TemplateService:
             return template_data
             
         except Exception as e:
-            print(f"Failed to update template {template_id}: {e}")
+            logger.info(f"Failed to update template {template_id}: {e}")
             raise TemplateServiceError(f"Update failed: {str(e)}")
     
     async def delete_template(
@@ -328,7 +332,7 @@ class TemplateService:
             if soft_delete:
                 # Soft delete - mark as deleted
                 template_data["status"] = "deleted"
-                template_data["deleted_at"] = datetime.utcnow().isoformat()
+                template_data["deleted_at"] = datetime.now(timezone.utc).isoformat()
                 template_data["deleted_by"] = user_id
                 
                 await self._cache_template_data(template_id, template_data)
@@ -351,7 +355,7 @@ class TemplateService:
                 result = {
                     "template_id": template_id,
                     "action": "hard_deleted",
-                    "deleted_at": datetime.utcnow().isoformat()
+                    "deleted_at": datetime.now(timezone.utc).isoformat()
                 }
             
             # Track deletion analytics
@@ -361,7 +365,7 @@ class TemplateService:
             return result
             
         except Exception as e:
-            print(f"Failed to delete template {template_id}: {e}")
+            logger.info(f"Failed to delete template {template_id}: {e}")
             raise TemplateServiceError(f"Deletion failed: {str(e)}")
     
     async def get_popular_templates(
@@ -383,7 +387,7 @@ class TemplateService:
         """
         try:
             # Calculate time range
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if timeframe == "day":
                 start_time = now - timedelta(days=1)
             elif timeframe == "week":
@@ -414,7 +418,7 @@ class TemplateService:
             }
             
         except Exception as e:
-            print(f"Failed to get popular templates: {e}")
+            logger.info(f"Failed to get popular templates: {e}")
             raise TemplateServiceError(f"Failed to get popular templates: {str(e)}")
     
     async def batch_process_templates(
@@ -435,7 +439,7 @@ class TemplateService:
             Batch processing results
         """
         try:
-            print(f"[{datetime.utcnow()}] Starting batch operation '{operation}' on {len(template_ids)} templates")
+            logger.info(f"Starting batch operation '{operation}' on {len(template_ids)} templates")
             
             results = []
             
@@ -513,15 +517,15 @@ class TemplateService:
                 "successful": len([r for r in results if r["status"] in ["queued", "reindexed"]]),
                 "failed": len([r for r in results if r["status"] == "failed"]),
                 "results": results,
-                "completed_at": datetime.utcnow().isoformat()
+                "completed_at": datetime.now(timezone.utc).isoformat()
             }
             
-            print(f"[{datetime.utcnow()}] Batch operation completed: {batch_summary['successful']}/{len(template_ids)} successful")
+            logger.info(f"Batch operation completed: {batch_summary['successful']}/{len(template_ids)} successful")
             
             return batch_summary
             
         except Exception as e:
-            print(f"Batch processing failed: {e}")
+            logger.info(f"Batch processing failed: {e}")
             raise TemplateServiceError(f"Batch processing failed: {str(e)}")
     
     # Private helper methods
@@ -546,7 +550,7 @@ class TemplateService:
     
     def _generate_template_id(self, user_id: str, filename: str) -> str:
         """Generate unique template ID"""
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         content_hash = hashlib.md5(f"{user_id}_{filename}_{timestamp}".encode()).hexdigest()[:8]
         return f"tpl_{timestamp}_{content_hash}"
     
@@ -581,7 +585,7 @@ class TemplateService:
             "template_id": template_id,
             "event": event,
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         # Store in Redis list (in production, use proper analytics DB)
@@ -629,7 +633,7 @@ class TemplateService:
             return results
             
         except Exception as e:
-            print(f"Vector search failed: {e}")
+            logger.info(f"Vector search failed: {e}")
             return []
     
     async def _filter_search(

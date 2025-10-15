@@ -5,7 +5,7 @@ Scheduled system housekeeping operations with comprehensive logging
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from celery.schedules import crontab
 from app.workers.celery_app import celery_app
@@ -27,7 +27,7 @@ def cleanup_old_generations() -> Dict[str, Any]:
     Returns:
         Cleanup statistics and results
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     try:
         logger.info(f"[{start_time}] Starting cleanup of old generations")
@@ -63,7 +63,7 @@ def cleanup_old_generations() -> Dict[str, Any]:
         cleanup_stats["temp_files_cleaned"] = temp_cleanup_result["cleaned_count"]
         
         # Calculate cleanup duration
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         cleanup_stats["cleanup_duration"] = (end_time - start_time).total_seconds()
         
         # Log cleanup summary
@@ -87,7 +87,7 @@ def cleanup_old_generations() -> Dict[str, Any]:
         asyncio.run(store_cleanup_report("generation_cleanup", {
             **cleanup_stats,
             "error": str(e),
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }))
         
         raise CleanupError(f"Generation cleanup failed: {str(e)}")
@@ -101,7 +101,7 @@ def cleanup_expired_tokens() -> Dict[str, Any]:
     Returns:
         Token cleanup statistics
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     try:
         logger.info(f"[{start_time}] Starting cleanup of expired tokens")
@@ -137,7 +137,7 @@ def cleanup_expired_tokens() -> Dict[str, Any]:
         token_stats["expired_sessions_cleaned"] = session_result["cleaned_count"]
         
         # Calculate cleanup duration
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         token_stats["cleanup_duration"] = (end_time - start_time).total_seconds()
         
         # Log token cleanup summary
@@ -160,7 +160,7 @@ def cleanup_expired_tokens() -> Dict[str, Any]:
         asyncio.run(store_cleanup_report("token_cleanup", {
             **token_stats,
             "error": str(e),
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }))
         
         raise CleanupError(f"Token cleanup failed: {str(e)}")
@@ -174,7 +174,7 @@ def aggregate_daily_analytics() -> Dict[str, Any]:
     Returns:
         Analytics aggregation results
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     try:
         logger.info(f"[{start_time}] Starting daily analytics aggregation")
@@ -210,7 +210,7 @@ def aggregate_daily_analytics() -> Dict[str, Any]:
         analytics_stats["reports_generated"] = report_result["reports_created"]
         
         # Calculate aggregation duration
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         analytics_stats["aggregation_duration"] = (end_time - start_time).total_seconds()
         
         # Log analytics summary
@@ -233,7 +233,7 @@ def aggregate_daily_analytics() -> Dict[str, Any]:
         asyncio.run(store_cleanup_report("analytics_aggregation", {
             **analytics_stats,
             "error": str(e),
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }))
         
         raise CleanupError(f"Analytics aggregation failed: {str(e)}")
@@ -247,7 +247,7 @@ def system_health_check() -> Dict[str, Any]:
     Returns:
         System health status and metrics
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     try:
         logger.info(f"[{start_time}] Starting system health check")
@@ -287,7 +287,7 @@ def system_health_check() -> Dict[str, Any]:
         health_results["overall_health"] = determine_overall_health(health_results)
         
         # Calculate check duration
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         health_results["check_duration"] = (end_time - start_time).total_seconds()
         
         # Log health check summary
@@ -309,7 +309,7 @@ def system_health_check() -> Dict[str, Any]:
         # Store error report
         asyncio.run(store_cleanup_report("health_check", {
             "error": str(e),
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }))
         
         raise CleanupError(f"System health check failed: {str(e)}")
@@ -319,7 +319,7 @@ def system_health_check() -> Dict[str, Any]:
 async def cleanup_failed_generations() -> Dict[str, Any]:
     """Clean up failed generation requests older than 7 days"""
     try:
-        cutoff_date = datetime.utcnow() - timedelta(days=7)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
         deleted_count = 0
         
         # Get failed generation keys from Redis
@@ -401,7 +401,7 @@ async def archive_old_analytics() -> Dict[str, Any]:
         archived_count = 0
         
         # Archive analytics older than 30 days
-        cutoff_date = datetime.utcnow() - timedelta(days=30)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
         
         # Process analytics keys
         analytics_keys = [
@@ -625,7 +625,7 @@ async def aggregate_template_metrics() -> Dict[str, Any]:
                     metrics_count += 1
         
         # Store aggregated metrics
-        daily_key = f"daily_metrics:templates:{datetime.utcnow().strftime('%Y-%m-%d')}"
+        daily_key = f"daily_metrics:templates:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         await redis_service.set(daily_key, template_metrics, 86400 * 7)  # 7 days retention
         
         logger.info(f"Aggregated metrics for {len(template_metrics)} templates")
@@ -663,7 +663,7 @@ async def aggregate_user_activity() -> Dict[str, Any]:
                 logger.warning(f"Failed to process user analytics {key}: {e}")
         
         # Store daily activity summary
-        daily_key = f"daily_activity:{datetime.utcnow().strftime('%Y-%m-%d')}"
+        daily_key = f"daily_activity:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         await redis_service.set(daily_key, daily_activity, 86400 * 30)  # 30 days retention
         
         logger.info(f"Processed activity for {users_processed} users")
@@ -712,7 +712,7 @@ async def aggregate_generation_stats() -> Dict[str, Any]:
                                               generation_stats["total_generations"] * 100)
         
         # Store generation statistics
-        daily_key = f"daily_generations:{datetime.utcnow().strftime('%Y-%m-%d')}"
+        daily_key = f"daily_generations:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         await redis_service.set(daily_key, generation_stats, 86400 * 30)  # 30 days retention
         
         logger.info(f"Processed {generations_processed} generation records")
@@ -739,7 +739,7 @@ async def compute_performance_metrics() -> Dict[str, Any]:
         metrics_computed = len(performance_metrics)
         
         # Store performance metrics
-        daily_key = f"daily_performance:{datetime.utcnow().strftime('%Y-%m-%d')}"
+        daily_key = f"daily_performance:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         await redis_service.set(daily_key, performance_metrics, 86400 * 7)  # 7 days retention
         
         logger.info(f"Computed {metrics_computed} performance metrics")
@@ -766,7 +766,7 @@ async def generate_daily_reports() -> Dict[str, Any]:
         reports_created = len(reports)
         
         # Store daily reports
-        report_key = f"daily_reports:{datetime.utcnow().strftime('%Y-%m-%d')}"
+        report_key = f"daily_reports:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
         await redis_service.set(report_key, reports, 86400 * 30)  # 30 days retention
         
         logger.info(f"Generated {reports_created} daily reports")
@@ -786,11 +786,11 @@ async def check_redis_health() -> Dict[str, Any]:
         await redis_service.ping()
         
         # Test Redis performance
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         await redis_service.set("health_check", "test", 60)
         await redis_service.get("health_check")
         await redis_service.delete("health_check")
-        response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        response_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
         
         status = "healthy" if response_time < 100 else "slow"
         
@@ -920,7 +920,7 @@ def determine_overall_health(health_results: Dict[str, Any]) -> str:
 async def store_cleanup_report(report_type: str, report_data: Dict[str, Any]) -> None:
     """Store cleanup report for monitoring"""
     try:
-        report_key = f"cleanup_reports:{report_type}:{datetime.utcnow().strftime('%Y-%m-%d_%H')}"
+        report_key = f"cleanup_reports:{report_type}:{datetime.now(timezone.utc).strftime('%Y-%m-%d_%H')}"
         await redis_service.set(report_key, report_data, 86400 * 7)  # 7 days retention
         
     except Exception as e:
@@ -929,7 +929,7 @@ async def store_cleanup_report(report_type: str, report_data: Dict[str, Any]) ->
 async def store_health_report(health_data: Dict[str, Any]) -> None:
     """Store health report for monitoring"""
     try:
-        health_key = f"health_reports:{datetime.utcnow().strftime('%Y-%m-%d_%H')}"
+        health_key = f"health_reports:{datetime.now(timezone.utc).strftime('%Y-%m-%d_%H')}"
         await redis_service.set(health_key, health_data, 86400 * 7)  # 7 days retention
         
     except Exception as e:

@@ -3,7 +3,7 @@ Authentication Endpoints
 Login, register, token refresh, password reset
 """
 
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
