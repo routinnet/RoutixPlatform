@@ -4,7 +4,7 @@ Test script for AI Vision Service
 import asyncio
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.ai_service import vision_ai_service, AIServiceError
 from app.services.embedding_service import embedding_service
 
@@ -184,7 +184,7 @@ async def main():
     await test_ai_service()
     test_celery_integration()
     
-    print(f"\n🎉 Test completed at {datetime.utcnow().isoformat()}")
+    print(f"\n🎉 Test completed at {datetime.now(timezone.utc).isoformat()}")
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,6 +1,7 @@
 """
 User management endpoints
 """
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, EmailStr
@@ -113,7 +114,7 @@ async def update_user_profile(
     """
     try:
         # Convert to dict and remove None values
-        updates = {k: v for k, v in request.dict().items() if v is not None}
+        updates = {k: v for k, v in request.model_dump().items() if v is not None}
         
         if not updates:
             raise HTTPException(status_code=400, detail="No updates provided")
@@ -182,7 +183,7 @@ async def purchase_credits(
 
 @router.get("/analytics", response_model=Dict[str, Any])
 async def get_user_analytics(
-    timeframe: str = Query("month", regex="^(day|week|month|year)$", description="Analytics timeframe"),
+    timeframe: str = Query("month", pattern="^(day|week|month|year)$", description="Analytics timeframe"),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -242,7 +243,7 @@ async def verify_email(
         user_data = await user_service._get_user_data(user_id)
         if user_data:
             user_data["is_verified"] = True
-            user_data["updated_at"] = datetime.utcnow().isoformat()
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             await user_service._store_user_data(user_id, user_data)
             
             # Remove verification token
@@ -313,7 +314,7 @@ async def confirm_password_reset(
         user_data = await user_service._get_user_data(user_id)
         if user_data:
             user_data["password_hash"] = user_service._hash_password(new_password)
-            user_data["updated_at"] = datetime.utcnow().isoformat()
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             await user_service._store_user_data(user_id, user_data)
             
             # Remove reset token
@@ -396,7 +397,7 @@ async def upgrade_subscription(
         
         # Update subscription tier
         user_data["subscription_tier"] = tier
-        user_data["updated_at"] = datetime.utcnow().isoformat()
+        user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         # Add monthly credits based on tier
         monthly_credits = user_service._get_monthly_credit_allowance(tier)
@@ -452,8 +453,8 @@ async def get_all_users(
                 "is_active": True,
                 "is_verified": True,
                 "credits": 10 + (i * 5),
-                "created_at": datetime.utcnow().isoformat(),
-                "last_login": datetime.utcnow().isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "last_login": datetime.now(timezone.utc).isoformat()
             })
         
         # Apply filters
@@ -501,7 +502,7 @@ async def update_user_role(
         
         # Update role
         target_user["role"] = new_role
-        target_user["updated_at"] = datetime.utcnow().isoformat()
+        target_user["updated_at"] = datetime.now(timezone.utc).isoformat()
         
         await user_service._store_user_data(user_id, target_user)
         

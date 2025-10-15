@@ -5,7 +5,7 @@ Tests all database operations, relationships, and vector operations
 import asyncio
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 # Add the app directory to the path
@@ -115,7 +115,7 @@ async def test_basic_operations():
                     type="text",
                     content="Create a gaming thumbnail with explosions",
                     message_metadata='{"intent": "generation_request"}',
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 session.add(test_message)
                 await session.commit()

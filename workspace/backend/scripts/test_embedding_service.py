@@ -3,7 +3,7 @@ Test script for Embedding Service
 """
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.ai_service import embedding_service, AIServiceError
 
 async def test_embedding_generation():
@@ -193,7 +193,7 @@ async def test_batch_edge_cases():
 async def main():
     """Run all embedding service tests"""
     print("🚀 Starting Embedding Service Test Suite")
-    print(f"Started at: {datetime.utcnow().isoformat()}")
+    print(f"Started at: {datetime.now(timezone.utc).isoformat()}")
     
     await test_embedding_generation()
     await test_caching_functionality()
@@ -215,7 +215,7 @@ async def main():
     print("   2. Ensure Redis is running")
     print("   3. Run tests again for full functionality")
     
-    print(f"\n🎉 Test completed at {datetime.utcnow().isoformat()}")
+    print(f"\n🎉 Test completed at {datetime.now(timezone.utc).isoformat()}")
 
 if __name__ == "__main__":
     asyncio.run(main())

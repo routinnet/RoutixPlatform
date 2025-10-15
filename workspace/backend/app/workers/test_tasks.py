@@ -3,7 +3,7 @@ Test tasks for verifying Celery functionality
 """
 import time
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from celery import current_task
 from app.workers.celery_app import celery_app
 from app.core.config import settings
@@ -14,12 +14,12 @@ def test_basic_task(self, message: str = "Hello from Celery!"):
     Basic test task to verify Celery is working
     """
     try:
-        print(f"[{datetime.utcnow()}] Executing test task: {message}")
+        print(f"[{datetime.now(timezone.utc)}] Executing test task: {message}")
         
         # Simulate some work
         for i in range(5):
             time.sleep(1)
-            print(f"[{datetime.utcnow()}] Progress: {i+1}/5")
+            print(f"[{datetime.now(timezone.utc)}] Progress: {i+1}/5")
             
             # Update task progress
             if current_task:
@@ -31,15 +31,15 @@ def test_basic_task(self, message: str = "Hello from Celery!"):
         result = {
             'status': 'completed',
             'message': message,
-            'processed_at': datetime.utcnow().isoformat(),
+            'processed_at': datetime.now(timezone.utc).isoformat(),
             'task_id': self.request.id
         }
         
-        print(f"[{datetime.utcnow()}] Task completed successfully")
+        print(f"[{datetime.now(timezone.utc)}] Task completed successfully")
         return result
         
     except Exception as e:
-        print(f"[{datetime.utcnow()}] Task failed: {str(e)}")
+        print(f"[{datetime.now(timezone.utc)}] Task failed: {str(e)}")
         raise self.retry(exc=e, countdown=60, max_retries=3)
 
 @celery_app.task(bind=True, name="app.workers.test_tasks.test_async_task")
@@ -48,7 +48,7 @@ def test_async_task(self, data: dict):
     Test task that simulates async operations
     """
     try:
-        print(f"[{datetime.utcnow()}] Starting async test task with data: {data}")
+        print(f"[{datetime.now(timezone.utc)}] Starting async test task with data: {data}")
         
         # Simulate async work
         steps = ['initialize', 'process', 'validate', 'finalize']
@@ -70,20 +70,20 @@ def test_async_task(self, data: dict):
                     }
                 )
             
-            print(f"[{datetime.utcnow()}] Step {i+1}/{len(steps)}: {step} ({progress}%)")
+            print(f"[{datetime.now(timezone.utc)}] Step {i+1}/{len(steps)}: {step} ({progress}%)")
         
         result = {
             'status': 'success',
             'input_data': data,
             'steps_completed': steps,
             'execution_time': len(steps) * 2,
-            'completed_at': datetime.utcnow().isoformat()
+            'completed_at': datetime.now(timezone.utc).isoformat()
         }
         
         return result
         
     except Exception as e:
-        print(f"[{datetime.utcnow()}] Async task failed: {str(e)}")
+        print(f"[{datetime.now(timezone.utc)}] Async task failed: {str(e)}")
         raise self.retry(exc=e, countdown=30, max_retries=2)
 
 @celery_app.task(name="app.workers.test_tasks.health_check_task")
@@ -103,20 +103,20 @@ def health_check_task():
         memory_percent = psutil.virtual_memory().percent
         
         health_data = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'redis_connected': redis_ping,
             'cpu_usage': cpu_percent,
             'memory_usage': memory_percent,
             'celery_worker': 'healthy'
         }
         
-        print(f"[{datetime.utcnow()}] Health check completed: {health_data}")
+        print(f"[{datetime.now(timezone.utc)}] Health check completed: {health_data}")
         return health_data
         
     except Exception as e:
-        print(f"[{datetime.utcnow()}] Health check failed: {str(e)}")
+        print(f"[{datetime.now(timezone.utc)}] Health check failed: {str(e)}")
         return {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'status': 'unhealthy',
             'error': str(e)
         }
@@ -127,7 +127,7 @@ def test_error_handling(self, should_fail: bool = False):
     Test task for error handling and retry logic
     """
     try:
-        print(f"[{datetime.utcnow()}] Testing error handling (should_fail={should_fail})")
+        print(f"[{datetime.now(timezone.utc)}] Testing error handling (should_fail={should_fail})")
         
         if should_fail:
             raise ValueError("Intentional test error")
@@ -135,11 +135,11 @@ def test_error_handling(self, should_fail: bool = False):
         return {
             'status': 'success',
             'message': 'Error handling test passed',
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }
         
     except Exception as e:
-        print(f"[{datetime.utcnow()}] Task error (attempt {self.request.retries + 1}): {str(e)}")
+        print(f"[{datetime.now(timezone.utc)}] Task error (attempt {self.request.retries + 1}): {str(e)}")
         
         if self.request.retries < 2:  # Retry up to 2 times
             raise self.retry(exc=e, countdown=10, max_retries=2)
@@ -148,5 +148,5 @@ def test_error_handling(self, should_fail: bool = False):
                 'status': 'failed',
                 'error': str(e),
                 'retries': self.request.retries,
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }

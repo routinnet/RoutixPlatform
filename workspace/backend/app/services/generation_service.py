@@ -4,7 +4,7 @@ Orchestrates the complete thumbnail generation pipeline
 """
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
 import uuid
@@ -14,6 +14,10 @@ from app.services.midjourney_service import midjourney_service, MidjourneyServic
 from app.services.ai_service import vision_ai_service, embedding_service, AIServiceError
 from app.services.redis_service import redis_service
 from app.workers.generation_tasks import generate_thumbnail_with_midjourney
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class GenerationStatus(str, Enum):
     """Generation status enumeration"""
@@ -80,7 +84,7 @@ class GenerationService:
             Generation request data with tracking ID
         """
         try:
-            print(f"[{datetime.utcnow()}] Creating generation request for user {user_id}")
+            logger.info(f"Creating generation request for user {user_id}")
             
             # Generate unique generation ID
             generation_id = self._generate_id()
@@ -102,9 +106,9 @@ class GenerationService:
                 "priority": priority,
                 "status": GenerationStatus.PENDING,
                 "progress": 0,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
-                "estimated_completion": (datetime.utcnow() + timedelta(minutes=10)).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "estimated_completion": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat(),
                 "credits_cost": self._calculate_credits_cost(priority),
                 "metadata": {
                     "pipeline_version": "1.0",
@@ -125,7 +129,7 @@ class GenerationService:
             # Track generation start
             await self._track_generation_event(generation_id, "created", user_id)
             
-            print(f"[{datetime.utcnow()}] Generation request created: {generation_id}")
+            logger.info(f"Generation request created: {generation_id}")
             
             return {
                 "generation": generation_request,
@@ -133,7 +137,7 @@ class GenerationService:
             }
             
         except Exception as e:
-            print(f"Generation creation failed: {e}")
+            logger.info(f"Generation creation failed: {e}")
             raise GenerationServiceError(f"Failed to create generation: {str(e)}")
     
     async def get_generation_status(
@@ -175,7 +179,7 @@ class GenerationService:
             return generation_data
             
         except Exception as e:
-            print(f"Failed to get generation status {generation_id}: {e}")
+            logger.info(f"Failed to get generation status {generation_id}: {e}")
             raise GenerationServiceError(f"Failed to get status: {str(e)}")
     
     async def get_generation_result(
@@ -234,7 +238,7 @@ class GenerationService:
             return enhanced_result
             
         except Exception as e:
-            print(f"Failed to get generation result {generation_id}: {e}")
+            logger.info(f"Failed to get generation result {generation_id}: {e}")
             raise GenerationServiceError(f"Failed to get result: {str(e)}")
     
     async def upscale_generation(
@@ -255,7 +259,7 @@ class GenerationService:
             Upscale request data
         """
         try:
-            print(f"[{datetime.utcnow()}] Starting upscale for generation {generation_id}")
+            logger.info(f"Starting upscale for generation {generation_id}")
             
             # Get original generation
             generation_data = await self._get_cached_generation_data(generation_id)
@@ -291,7 +295,7 @@ class GenerationService:
                 "upscale_index": upscale_index,
                 "status": GenerationStatus.PENDING,
                 "progress": 0,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "credits_cost": self.upscale_cost,
                 "original_task_id": original_task_id,
                 "service": service_used
@@ -306,7 +310,7 @@ class GenerationService:
                 upscale_request.update({
                     "status": GenerationStatus.COMPLETED,
                     "progress": 100,
-                    "completed_at": datetime.utcnow().isoformat(),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
                     "result": upscale_result
                 })
                 
@@ -320,14 +324,14 @@ class GenerationService:
                 upscale_request.update({
                     "status": GenerationStatus.FAILED,
                     "error": str(e),
-                    "failed_at": datetime.utcnow().isoformat()
+                    "failed_at": datetime.now(timezone.utc).isoformat()
                 })
                 raise GenerationServiceError(f"Upscale failed: {str(e)}")
             
             # Cache upscale request
             await self._cache_generation_data(upscale_id, upscale_request)
             
-            print(f"[{datetime.utcnow()}] Upscale completed: {upscale_id}")
+            logger.info(f"Upscale completed: {upscale_id}")
             
             return {
                 "upscale": upscale_request,
@@ -335,7 +339,7 @@ class GenerationService:
             }
             
         except Exception as e:
-            print(f"Upscale failed for generation {generation_id}: {e}")
+            logger.info(f"Upscale failed for generation {generation_id}: {e}")
             raise GenerationServiceError(f"Upscale failed: {str(e)}")
     
     async def get_generation_history(
@@ -385,7 +389,7 @@ class GenerationService:
             return history_data
             
         except Exception as e:
-            print(f"Failed to get generation history for user {user_id}: {e}")
+            logger.info(f"Failed to get generation history for user {user_id}: {e}")
             raise GenerationServiceError(f"Failed to get history: {str(e)}")
     
     async def cancel_generation(
@@ -426,13 +430,13 @@ class GenerationService:
                     from app.workers.celery_app import celery_app
                     celery_app.control.revoke(pipeline_task_id, terminate=True)
                 except Exception as e:
-                    print(f"Failed to cancel Celery task {pipeline_task_id}: {e}")
+                    logger.info(f"Failed to cancel Celery task {pipeline_task_id}: {e}")
             
             # Update generation status
             generation_data.update({
                 "status": GenerationStatus.CANCELLED,
-                "cancelled_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
+                "cancelled_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
             })
             
             # Update cache
@@ -448,14 +452,14 @@ class GenerationService:
             }
             
         except Exception as e:
-            print(f"Failed to cancel generation {generation_id}: {e}")
+            logger.info(f"Failed to cancel generation {generation_id}: {e}")
             raise GenerationServiceError(f"Cancellation failed: {str(e)}")
     
     # Private helper methods
     
     def _generate_id(self) -> str:
         """Generate unique ID for generations"""
-        return f"gen_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
+        return f"gen_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{str(uuid.uuid4())[:8]}"
     
     async def _validate_user_credits(self, user_id: str, priority: str, cost: Optional[int] = None) -> None:
         """Validate user has sufficient credits"""
@@ -479,7 +483,7 @@ class GenerationService:
             # Queue generation task
             task = generate_thumbnail_with_midjourney.delay(generation_request)
             
-            print(f"Generation pipeline started: {task.id}")
+            logger.info(f"Generation pipeline started: {task.id}")
             return task.id
             
         except Exception as e:
@@ -501,7 +505,7 @@ class GenerationService:
             "generation_id": generation_id,
             "event": event,
             "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         analytics_key = f"analytics:generation:{generation_id}"
@@ -529,13 +533,13 @@ class GenerationService:
                 return {"status": GenerationStatus.FAILED, "error": str(result.info)}
                 
         except Exception as e:
-            print(f"Failed to get task progress for {task_id}: {e}")
+            logger.info(f"Failed to get task progress for {task_id}: {e}")
             return None
     
     def _calculate_time_estimates(self, generation_data: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate time estimates for generation"""
         created_at = datetime.fromisoformat(generation_data["created_at"])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         elapsed = (now - created_at).total_seconds()
         
         # Estimate based on current progress
@@ -560,7 +564,7 @@ class GenerationService:
     async def _deduct_user_credits(self, user_id: str, amount: int) -> None:
         """Deduct credits from user account"""
         # Mock implementation - replace with actual user service
-        print(f"Deducting {amount} credits from user {user_id}")
+        logger.info(f"Deducting {amount} credits from user {user_id}")
     
     async def _get_user_generations(
         self,
@@ -580,7 +584,7 @@ class GenerationService:
                 "user_id": user_id,
                 "prompt": f"Mock generation prompt {i + offset}",
                 "status": GenerationStatus.COMPLETED if i % 3 == 0 else GenerationStatus.PENDING,
-                "created_at": (datetime.utcnow() - timedelta(hours=i)).isoformat(),
+                "created_at": (datetime.now(timezone.utc) - timedelta(hours=i)).isoformat(),
                 "credits_cost": self.generation_cost,
                 "progress": 100 if i % 3 == 0 else 50
             })

@@ -8,13 +8,17 @@ import base64
 import hashlib
 from io import BytesIO
 from typing import Dict, List, Optional, Any, Union
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
 from PIL import Image
 import google.generativeai as genai
 import openai
 from app.core.config import settings
 from app.services.redis_service import redis_service
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class AIServiceError(Exception):
     """Custom exception for AI service errors"""
@@ -28,7 +32,7 @@ class EmbeddingService:
             self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             self.openai_client = None
-            print("Warning: OPENAI_API_KEY not configured for embeddings")
+            logger.info("Warning: OPENAI_API_KEY not configured for embeddings")
         
         self.model = settings.EMBEDDING_MODEL
         self.dimensions = settings.EMBEDDING_DIMENSIONS
@@ -61,13 +65,13 @@ class EmbeddingService:
         if use_cache:
             cached_embedding = await redis_service.get(cache_key)
             if cached_embedding and isinstance(cached_embedding, list):
-                print(f"Retrieved cached embedding for text hash: {text_hash[:8]}...")
+                logger.info(f"Retrieved cached embedding for text hash: {text_hash[:8]}...")
                 return cached_embedding
         
         # Generate new embedding with retry logic
         for attempt in range(self.max_retries):
             try:
-                print(f"Generating embedding (attempt {attempt + 1}) for text: {text[:50]}...")
+                logger.info(f"Generating embedding (attempt {attempt + 1}) for text: {text[:50]}...")
                 
                 response = await asyncio.to_thread(
                     self.openai_client.embeddings.create,
@@ -88,15 +92,15 @@ class EmbeddingService:
                 # Cache the result
                 if use_cache:
                     await redis_service.set(cache_key, embedding, self.cache_ttl)
-                    print(f"Cached embedding for text hash: {text_hash[:8]}...")
+                    logger.info(f"Cached embedding for text hash: {text_hash[:8]}...")
                 
                 return embedding
                 
             except Exception as e:
                 if attempt < self.max_retries - 1:
                     wait_time = 2 ** attempt  # Exponential backoff
-                    print(f"Embedding generation failed (attempt {attempt + 1}): {e}")
-                    print(f"Retrying in {wait_time} seconds...")
+                    logger.info(f"Embedding generation failed (attempt {attempt + 1}): {e}")
+                    logger.info(f"Retrying in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
                     continue
                 else:
@@ -119,7 +123,7 @@ class EmbeddingService:
         if not self.openai_client:
             raise AIServiceError("OpenAI client not configured for embeddings")
         
-        print(f"Processing batch of {len(texts)} texts for embeddings...")
+        logger.info(f"Processing batch of {len(texts)} texts for embeddings...")
         
         # Check cache for each text
         embeddings = [None] * len(texts)  # Initialize with None placeholders
@@ -146,7 +150,7 @@ class EmbeddingService:
             uncached_texts = [t for t in texts if t and t.strip()]
             uncached_indices = list(range(len(texts)))
         
-        print(f"Found {len(texts) - len(uncached_texts)} cached embeddings, generating {len(uncached_texts)} new ones")
+        logger.info(f"Found {len(texts) - len(uncached_texts)} cached embeddings, generating {len(uncached_texts)} new ones")
         
         # Generate embeddings for uncached texts in batches
         if uncached_texts:
@@ -157,7 +161,7 @@ class EmbeddingService:
                     batch_texts = uncached_texts[batch_start:batch_end]
                     batch_indices = uncached_indices[batch_start:batch_end]
                     
-                    print(f"Processing batch {batch_start//self.batch_size + 1}: {len(batch_texts)} texts")
+                    logger.info(f"Processing batch {batch_start//self.batch_size + 1}: {len(batch_texts)} texts")
                     
                     # Generate embeddings for this batch
                     for attempt in range(self.max_retries):
@@ -195,8 +199,8 @@ class EmbeddingService:
                         except Exception as e:
                             if attempt < self.max_retries - 1:
                                 wait_time = 2 ** attempt
-                                print(f"Batch embedding failed (attempt {attempt + 1}): {e}")
-                                print(f"Retrying in {wait_time} seconds...")
+                                logger.info(f"Batch embedding failed (attempt {attempt + 1}): {e}")
+                                logger.info(f"Retrying in {wait_time} seconds...")
                                 await asyncio.sleep(wait_time)
                                 continue
                             else:
@@ -214,7 +218,7 @@ class EmbeddingService:
             if embeddings[i] is None:
                 embeddings[i] = [0.0] * self.dimensions
         
-        print(f"Batch embedding generation completed: {len(embeddings)} embeddings")
+        logger.info(f"Batch embedding generation completed: {len(embeddings)} embeddings")
         return embeddings
     
     async def get_embedding_stats(self) -> Dict[str, Any]:
@@ -230,7 +234,7 @@ class EmbeddingService:
                 "cache_ttl": self.cache_ttl,
                 "batch_size": self.batch_size,
                 "service_available": self.openai_client is not None,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
             return stats
@@ -239,7 +243,7 @@ class EmbeddingService:
             return {
                 "error": str(e),
                 "service_available": False,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
 class VisionAIService:
@@ -252,14 +256,14 @@ class VisionAIService:
             self.gemini_model = genai.GenerativeModel('gemini-pro-vision')
         else:
             self.gemini_model = None
-            print("Warning: GEMINI_API_KEY not configured")
+            logger.info("Warning: GEMINI_API_KEY not configured")
         
         # Configure OpenAI
         if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY:
             self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             self.openai_client = None
-            print("Warning: OPENAI_API_KEY not configured")
+            logger.info("Warning: OPENAI_API_KEY not configured")
         
         self.max_retries = 3
         self.retry_delay = 1
@@ -281,7 +285,7 @@ class VisionAIService:
                 cache_key = f"template:analysis:{template_id}"
                 cached_result = await redis_service.get(cache_key)
                 if cached_result:
-                    print(f"Returning cached analysis for template {template_id}")
+                    logger.info(f"Returning cached analysis for template {template_id}")
                     return cached_result
             
             # Load and validate image
@@ -294,18 +298,18 @@ class VisionAIService:
             
             if self.gemini_model:
                 try:
-                    print("Attempting analysis with Gemini Vision...")
+                    logger.info("Attempting analysis with Gemini Vision...")
                     analysis_result = await self._analyze_with_gemini(image_data)
                 except Exception as e:
-                    print(f"Gemini analysis failed: {e}")
+                    logger.info(f"Gemini analysis failed: {e}")
                     analysis_result = None
             
             if not analysis_result and self.openai_client:
                 try:
-                    print("Falling back to OpenAI GPT-4 Vision...")
+                    logger.info("Falling back to OpenAI GPT-4 Vision...")
                     analysis_result = await self._analyze_with_openai(image_data)
                 except Exception as e:
-                    print(f"OpenAI analysis failed: {e}")
+                    logger.info(f"OpenAI analysis failed: {e}")
                     raise AIServiceError(f"Both AI services failed. Last error: {e}")
             
             if not analysis_result:
@@ -321,7 +325,7 @@ class VisionAIService:
             return enhanced_result
             
         except Exception as e:
-            print(f"Template analysis failed: {e}")
+            logger.info(f"Template analysis failed: {e}")
             raise AIServiceError(f"Template analysis failed: {str(e)}")
     
     async def _load_image(self, image_source: str) -> Optional[bytes]:
@@ -338,7 +342,7 @@ class VisionAIService:
                 with open(image_source, 'rb') as f:
                     return f.read()
         except Exception as e:
-            print(f"Failed to load image from {image_source}: {e}")
+            logger.info(f"Failed to load image from {image_source}: {e}")
             return None
     
     async def _analyze_with_gemini(self, image_data: bytes) -> Dict[str, Any]:
@@ -368,14 +372,14 @@ class VisionAIService:
                         
                 except json.JSONDecodeError as e:
                     if attempt < self.max_retries - 1:
-                        print(f"JSON parsing failed (attempt {attempt + 1}), retrying...")
+                        logger.info(f"JSON parsing failed (attempt {attempt + 1}), retrying...")
                         await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
                     else:
                         raise AIServiceError(f"Failed to parse Gemini response as JSON: {e}")
                 except Exception as e:
                     if attempt < self.max_retries - 1:
-                        print(f"Gemini API error (attempt {attempt + 1}): {e}")
+                        logger.info(f"Gemini API error (attempt {attempt + 1}): {e}")
                         await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
                     else:
@@ -433,14 +437,14 @@ class VisionAIService:
                         
                 except json.JSONDecodeError as e:
                     if attempt < self.max_retries - 1:
-                        print(f"JSON parsing failed (attempt {attempt + 1}), retrying...")
+                        logger.info(f"JSON parsing failed (attempt {attempt + 1}), retrying...")
                         await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
                     else:
                         raise AIServiceError(f"Failed to parse OpenAI response as JSON: {e}")
                 except Exception as e:
                     if attempt < self.max_retries - 1:
-                        print(f"OpenAI API error (attempt {attempt + 1}): {e}")
+                        logger.info(f"OpenAI API error (attempt {attempt + 1}): {e}")
                         await asyncio.sleep(self.retry_delay * (attempt + 1))
                         continue
                     else:
@@ -506,7 +510,7 @@ Requirements:
         enhanced = {
             **analysis,
             "metadata": {
-                "analyzed_at": datetime.utcnow().isoformat(),
+                "analyzed_at": datetime.now(timezone.utc).isoformat(),
                 "analysis_version": "1.0",
                 "image_url": image_url,
                 "ai_provider": analysis.get('ai_provider', 'unknown')

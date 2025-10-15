@@ -147,7 +147,7 @@ async def update_template(
     """
     try:
         # Convert to dict and remove None values
-        update_data = {k: v for k, v in updates.dict().items() if v is not None}
+        update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
         
         if not update_data:
             raise HTTPException(status_code=400, detail="No updates provided")
@@ -198,7 +198,7 @@ async def delete_template(
 
 @router.get("/popular/trending", response_model=Dict[str, Any])
 async def get_popular_templates(
-    timeframe: str = Query("week", regex="^(day|week|month|all)$", description="Time period for popularity"),
+    timeframe: str = Query("week", pattern="^(day|week|month|all)$", description="Time period for popularity"),
     category: Optional[str] = Query(None, description="Filter by category"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results to return"),
     current_user: User = Depends(get_current_user)
@@ -256,7 +256,7 @@ async def batch_process_templates(
 @router.get("/analytics/{template_id}", response_model=Dict[str, Any])
 async def get_template_analytics(
     template_id: str,
-    timeframe: str = Query("week", regex="^(day|week|month|all)$"),
+    timeframe: str = Query("week", pattern="^(day|week|month|all)$"),
     current_user: User = Depends(get_current_user)
 ):
     """

@@ -5,13 +5,17 @@ Handles user registration, authentication, credit management, and analytics
 import asyncio
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any, Union
 from enum import Enum
 import bcrypt
 import jwt
 from app.core.config import settings
 from app.services.redis_service import redis_service
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class UserRole(str, Enum):
     """User role enumeration"""
@@ -84,7 +88,7 @@ class UserService:
             User registration data with tokens
         """
         try:
-            print(f"[{datetime.utcnow()}] Registering user: {username}")
+            logger.info(f"Registering user: {username}")
             
             # Validate input
             await self._validate_registration_data(username, email, password)
@@ -113,8 +117,8 @@ class UserService:
                 "credits": self.free_tier_credits,
                 "total_credits_purchased": 0,
                 "total_credits_used": 0,
-                "created_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
                 "last_login": None,
                 "login_count": 0,
                 "profile": {
@@ -168,7 +172,7 @@ class UserService:
                 user_id, self.free_tier_credits, TransactionType.BONUS, "Welcome bonus"
             )
             
-            print(f"[{datetime.utcnow()}] User registered successfully: {user_id}")
+            logger.info(f"User registered successfully: {user_id}")
             
             return {
                 "user": self._sanitize_user_data(user_data),
@@ -179,7 +183,7 @@ class UserService:
             }
             
         except Exception as e:
-            print(f"User registration failed: {e}")
+            logger.info(f"User registration failed: {e}")
             raise UserServiceError(f"Registration failed: {str(e)}")
     
     async def login_user(
@@ -200,7 +204,7 @@ class UserService:
             User data with authentication tokens
         """
         try:
-            print(f"[{datetime.utcnow()}] Login attempt for: {username_or_email}")
+            logger.info(f"Login attempt for: {username_or_email}")
             
             # Check rate limiting
             await self._check_login_rate_limit(username_or_email)
@@ -222,9 +226,9 @@ class UserService:
                 raise UserServiceError("Account is deactivated")
             
             # Update login statistics
-            user_data["last_login"] = datetime.utcnow().isoformat()
+            user_data["last_login"] = datetime.now(timezone.utc).isoformat()
             user_data["login_count"] = user_data.get("login_count", 0) + 1
-            user_data["updated_at"] = datetime.utcnow().isoformat()
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             
             # Store updated user data
             await self._store_user_data(user_data["id"], user_data)
@@ -243,7 +247,7 @@ class UserService:
             # Track login
             await self._track_user_event(user_data["id"], "logged_in", {"remember_me": remember_me})
             
-            print(f"[{datetime.utcnow()}] User logged in successfully: {user_data['id']}")
+            logger.info(f"User logged in successfully: {user_data['id']}")
             
             return {
                 "user": self._sanitize_user_data(user_data),
@@ -253,7 +257,7 @@ class UserService:
             }
             
         except Exception as e:
-            print(f"User login failed: {e}")
+            logger.info(f"User login failed: {e}")
             raise UserServiceError(f"Login failed: {str(e)}")
     
     async def get_user_profile(self, user_id: str) -> Dict[str, Any]:
@@ -283,7 +287,7 @@ class UserService:
             return profile_data
             
         except Exception as e:
-            print(f"Failed to get user profile {user_id}: {e}")
+            logger.info(f"Failed to get user profile {user_id}: {e}")
             raise UserServiceError(f"Failed to get profile: {str(e)}")
     
     async def update_user_profile(
@@ -339,7 +343,7 @@ class UserService:
                 await self._validate_email_update(user_id, updates["email"])
                 user_data["is_verified"] = False  # Re-verify email
             
-            user_data["updated_at"] = datetime.utcnow().isoformat()
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             
             # Store updated data
             await self._store_user_data(user_id, user_data)
@@ -350,7 +354,7 @@ class UserService:
             return self._sanitize_user_data(user_data)
             
         except Exception as e:
-            print(f"Failed to update user profile {user_id}: {e}")
+            logger.info(f"Failed to update user profile {user_id}: {e}")
             raise UserServiceError(f"Failed to update profile: {str(e)}")
     
     async def get_user_credits(self, user_id: str) -> Dict[str, Any]:
@@ -386,7 +390,7 @@ class UserService:
             return credit_info
             
         except Exception as e:
-            print(f"Failed to get user credits {user_id}: {e}")
+            logger.info(f"Failed to get user credits {user_id}: {e}")
             raise UserServiceError(f"Failed to get credits: {str(e)}")
     
     async def purchase_credits(
@@ -409,7 +413,7 @@ class UserService:
             Purchase result and updated credit balance
         """
         try:
-            print(f"[{datetime.utcnow()}] Processing credit purchase for user {user_id}: {credit_amount} credits")
+            logger.info(f"Processing credit purchase for user {user_id}: {credit_amount} credits")
             
             user_data = await self._get_user_data(user_id)
             
@@ -435,7 +439,7 @@ class UserService:
             # Update user credits
             user_data["credits"] = user_data.get("credits", 0) + credit_amount
             user_data["total_credits_purchased"] = user_data.get("total_credits_purchased", 0) + credit_amount
-            user_data["updated_at"] = datetime.utcnow().isoformat()
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             
             # Store updated data
             await self._store_user_data(user_id, user_data)
@@ -460,7 +464,7 @@ class UserService:
                 "payment_method": payment_method
             })
             
-            print(f"[{datetime.utcnow()}] Credit purchase completed: {user_id}")
+            logger.info(f"Credit purchase completed: {user_id}")
             
             return {
                 "purchase_id": payment_result["payment_id"],
@@ -471,7 +475,7 @@ class UserService:
             }
             
         except Exception as e:
-            print(f"Credit purchase failed for user {user_id}: {e}")
+            logger.info(f"Credit purchase failed for user {user_id}: {e}")
             raise UserServiceError(f"Credit purchase failed: {str(e)}")
     
     async def get_user_analytics(
@@ -528,7 +532,7 @@ class UserService:
             return analytics
             
         except Exception as e:
-            print(f"Failed to get user analytics {user_id}: {e}")
+            logger.info(f"Failed to get user analytics {user_id}: {e}")
             raise UserServiceError(f"Failed to get analytics: {str(e)}")
     
     async def deduct_user_credits(
@@ -564,7 +568,7 @@ class UserService:
             # Deduct credits
             user_data["credits"] = current_credits - amount
             user_data["total_credits_used"] = user_data.get("total_credits_used", 0) + amount
-            user_data["updated_at"] = datetime.utcnow().isoformat()
+            user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
             
             # Store updated data
             await self._store_user_data(user_id, user_data)
@@ -581,14 +585,14 @@ class UserService:
             }
             
         except Exception as e:
-            print(f"Credit deduction failed for user {user_id}: {e}")
+            logger.info(f"Credit deduction failed for user {user_id}: {e}")
             raise UserServiceError(f"Credit deduction failed: {str(e)}")
     
     # Private helper methods
     
     def _generate_user_id(self) -> str:
         """Generate unique user ID"""
-        return f"user_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}"
+        return f"user_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}"
     
     def _hash_password(self, password: str) -> str:
         """Hash password using bcrypt"""
@@ -608,8 +612,8 @@ class UserService:
             "role": user_data["role"],
             "is_admin": user_data["role"] in [UserRole.ADMIN, UserRole.MODERATOR],
             "credits": user_data.get("credits", 0),
-            "exp": datetime.utcnow() + timedelta(hours=hours),
-            "iat": datetime.utcnow()
+            "exp": datetime.now(timezone.utc) + timedelta(hours=hours),
+            "iat": datetime.now(timezone.utc)
         }
         
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
@@ -696,13 +700,13 @@ class UserService:
     ) -> None:
         """Log credit transaction"""
         transaction = {
-            "id": f"txn_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}",
+            "id": f"txn_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}",
             "user_id": user_id,
             "amount": amount,
             "type": transaction_type,
             "description": description,
             "metadata": metadata or {},
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         # Store transaction
@@ -715,7 +719,7 @@ class UserService:
             "user_id": user_id,
             "event": event,
             "metadata": metadata,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         await redis_service.lpush(f"analytics:user:{user_id}", event_data)
@@ -729,7 +733,7 @@ class UserService:
     def _calculate_account_age(self, created_at: str) -> int:
         """Calculate account age in days"""
         created = datetime.fromisoformat(created_at)
-        return (datetime.utcnow() - created).days
+        return (datetime.now(timezone.utc) - created).days
     
     def _calculate_credit_usage_percentage(self, user_data: Dict[str, Any]) -> float:
         """Calculate credit usage percentage"""
@@ -781,7 +785,7 @@ class UserService:
     ) -> Dict[str, Any]:
         """Process payment (mock implementation)"""
         # Mock payment processing
-        payment_id = f"pay_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}"
+        payment_id = f"pay_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{secrets.token_hex(4)}"
         
         # Simulate payment success/failure
         success = True  # In real implementation, integrate with payment processor
@@ -807,7 +811,7 @@ class UserService:
     def _calculate_next_credit_refill(self, user_data: Dict[str, Any]) -> str:
         """Calculate next credit refill date"""
         # Mock implementation - first day of next month
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if now.month == 12:
             next_month = now.replace(year=now.year + 1, month=1, day=1)
         else:
@@ -817,7 +821,7 @@ class UserService:
     
     def _get_analytics_period(self, timeframe: str) -> Dict[str, str]:
         """Get analytics period dates"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         if timeframe == "day":
             start = now.replace(hour=0, minute=0, second=0, microsecond=0)

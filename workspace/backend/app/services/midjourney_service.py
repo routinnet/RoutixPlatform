@@ -6,10 +6,14 @@ import asyncio
 import json
 import time
 from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import httpx
 from app.core.config import settings
 from app.services.redis_service import redis_service
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 class MidjourneyServiceError(Exception):
     """Custom exception for Midjourney service errors"""
@@ -39,7 +43,7 @@ class MidjourneyService:
         self.default_stylize = 750
         
         if not self.goapi_api_key and not self.useapi_api_key:
-            print("Warning: Neither GOAPI_API_KEY nor USEAPI_API_KEY configured")
+            logger.info("Warning: Neither GOAPI_API_KEY nor USEAPI_API_KEY configured")
     
     async def generate_thumbnail(
         self,
@@ -67,7 +71,7 @@ class MidjourneyService:
             Dict containing generation result and metadata
         """
         try:
-            print(f"[{datetime.utcnow()}] Starting Midjourney generation...")
+            logger.info(f"Starting Midjourney generation...")
             
             # Build enhanced prompt
             enhanced_prompt = self._build_enhanced_prompt(
@@ -79,22 +83,22 @@ class MidjourneyService:
             
             if self.goapi_api_key:
                 try:
-                    print("Attempting generation with GoAPI.ai...")
+                    logger.info("Attempting generation with GoAPI.ai...")
                     generation_result = await self._generate_with_goapi(
                         enhanced_prompt, user_face_url, user_logo_url
                     )
                 except Exception as e:
-                    print(f"GoAPI.ai generation failed: {e}")
+                    logger.info(f"GoAPI.ai generation failed: {e}")
                     generation_result = None
             
             if not generation_result and self.useapi_api_key:
                 try:
-                    print("Falling back to UseAPI.net...")
+                    logger.info("Falling back to UseAPI.net...")
                     generation_result = await self._generate_with_useapi(
                         enhanced_prompt, user_face_url, user_logo_url
                     )
                 except Exception as e:
-                    print(f"UseAPI.net generation failed: {e}")
+                    logger.info(f"UseAPI.net generation failed: {e}")
                     raise MidjourneyServiceError(f"Both Midjourney services failed. Last error: {e}")
             
             if not generation_result:
@@ -105,11 +109,11 @@ class MidjourneyService:
                 generation_result, enhanced_prompt, template_analysis
             )
             
-            print(f"[{datetime.utcnow()}] Midjourney generation completed successfully")
+            logger.info(f"Midjourney generation completed successfully")
             return enhanced_result
             
         except Exception as e:
-            print(f"Midjourney generation failed: {e}")
+            logger.info(f"Midjourney generation failed: {e}")
             raise MidjourneyServiceError(f"Generation failed: {str(e)}")
     
     async def _generate_with_goapi(
@@ -151,7 +155,7 @@ class MidjourneyService:
                 if not task_id:
                     raise MidjourneyServiceError("No task_id received from GoAPI.ai")
                 
-                print(f"GoAPI.ai task submitted: {task_id}")
+                logger.info(f"GoAPI.ai task submitted: {task_id}")
                 
                 # Poll for completion
                 return await self._poll_goapi_status(task_id, headers)
@@ -197,7 +201,7 @@ class MidjourneyService:
                 if not job_id:
                     raise MidjourneyServiceError("No job_id received from UseAPI.net")
                 
-                print(f"UseAPI.net job submitted: {job_id}")
+                logger.info(f"UseAPI.net job submitted: {job_id}")
                 
                 # Poll for completion
                 return await self._poll_useapi_status(job_id, headers)
@@ -224,7 +228,7 @@ class MidjourneyService:
                     result = response.json()
                     status = result.get("status", "").lower()
                     
-                    print(f"GoAPI.ai poll {poll_count}: {status}")
+                    logger.info(f"GoAPI.ai poll {poll_count}: {status}")
                     
                     if status in ["completed", "success"]:
                         image_url = result.get("image_url") or result.get("result", {}).get("image_url")
@@ -251,7 +255,7 @@ class MidjourneyService:
                         continue
                     
                     else:
-                        print(f"Unknown status: {status}, continuing...")
+                        logger.info(f"Unknown status: {status}, continuing...")
                         await asyncio.sleep(self.poll_interval)
                         continue
                 
@@ -260,7 +264,7 @@ class MidjourneyService:
                         raise MidjourneyServiceError(f"Polling failed after {self.max_retries} retries: {e}")
                     
                     wait_time = self.poll_interval * (2 ** (poll_count - 1))
-                    print(f"Poll error, retrying in {wait_time}s: {e}")
+                    logger.info(f"Poll error, retrying in {wait_time}s: {e}")
                     await asyncio.sleep(wait_time)
                     continue
         
@@ -285,7 +289,7 @@ class MidjourneyService:
                     result = response.json()
                     status = result.get("status", "").lower()
                     
-                    print(f"UseAPI.net poll {poll_count}: {status}")
+                    logger.info(f"UseAPI.net poll {poll_count}: {status}")
                     
                     if status in ["completed", "success"]:
                         image_url = result.get("image_url") or result.get("attachments", [{}])[0].get("url")
@@ -312,7 +316,7 @@ class MidjourneyService:
                         continue
                     
                     else:
-                        print(f"Unknown status: {status}, continuing...")
+                        logger.info(f"Unknown status: {status}, continuing...")
                         await asyncio.sleep(self.poll_interval)
                         continue
                 
@@ -321,7 +325,7 @@ class MidjourneyService:
                         raise MidjourneyServiceError(f"Polling failed after {self.max_retries} retries: {e}")
                     
                     wait_time = self.poll_interval * (2 ** (poll_count - 1))
-                    print(f"Poll error, retrying in {wait_time}s: {e}")
+                    logger.info(f"Poll error, retrying in {wait_time}s: {e}")
                     await asyncio.sleep(wait_time)
                     continue
         
@@ -413,7 +417,7 @@ class MidjourneyService:
         if mj_params:
             enhanced_prompt += " " + " ".join(mj_params)
         
-        print(f"Enhanced Midjourney prompt: {enhanced_prompt}")
+        logger.info(f"Enhanced Midjourney prompt: {enhanced_prompt}")
         return enhanced_prompt
     
     def _enhance_generation_result(
@@ -427,7 +431,7 @@ class MidjourneyService:
         enhanced = {
             **result,
             "metadata": {
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
                 "service_version": "1.0",
                 "prompt_used": prompt,
                 "midjourney_service": result.get("service", "unknown")
@@ -473,7 +477,7 @@ class MidjourneyService:
             Dict containing upscaled image result
         """
         try:
-            print(f"[{datetime.utcnow()}] Starting image upscale...")
+            logger.info(f"Starting image upscale...")
             
             if service == "goapi" and self.goapi_api_key:
                 return await self._upscale_with_goapi(task_id, upscale_index)
@@ -483,7 +487,7 @@ class MidjourneyService:
                 raise MidjourneyServiceError(f"Upscale not available for service: {service}")
                 
         except Exception as e:
-            print(f"Image upscale failed: {e}")
+            logger.info(f"Image upscale failed: {e}")
             raise MidjourneyServiceError(f"Upscale failed: {str(e)}")
     
     async def _upscale_with_goapi(self, task_id: str, upscale_index: int) -> Dict[str, Any]:
@@ -554,7 +558,7 @@ class MidjourneyService:
                 "max_poll_time": self.max_poll_time,
                 "default_model": self.default_model,
                 "default_aspect_ratio": self.default_aspect_ratio,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
             
             return stats
@@ -563,7 +567,7 @@ class MidjourneyService:
             return {
                 "error": str(e),
                 "service_available": False,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
 # Global Midjourney service instance

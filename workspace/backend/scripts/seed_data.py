@@ -5,7 +5,7 @@ Creates initial admin user, default algorithm, and system settings
 import asyncio
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from passlib.context import CryptContext
 import json
 
@@ -52,7 +52,7 @@ async def seed_admin_user():
             is_active=True,
             is_admin=True,
             email_verified=True,
-            last_login=datetime.utcnow()
+            last_login=datetime.now(timezone.utc)
         )
         
         session.add(admin_user)

@@ -221,7 +221,7 @@ async def get_queue_status(
 
 @router.get("/analytics/summary", response_model=Dict[str, Any])
 async def get_generation_analytics(
-    timeframe: str = Query("week", regex="^(day|week|month|all)$"),
+    timeframe: str = Query("week", pattern="^(day|week|month|all)$"),
     current_user: User = Depends(get_current_user)
 ):
     """

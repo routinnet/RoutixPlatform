@@ -8,6 +8,10 @@ import openai
 from app.core.config import settings
 from app.services.redis_service import redis_service
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class EmbeddingService:
     """Service for generating text embeddings"""
     
@@ -16,7 +20,7 @@ class EmbeddingService:
             self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             self.openai_client = None
-            print("Warning: OPENAI_API_KEY not configured for embeddings")
+            logger.info("Warning: OPENAI_API_KEY not configured for embeddings")
         
         self.model = "text-embedding-3-small"
         self.max_retries = 3
@@ -63,7 +67,7 @@ class EmbeddingService:
                 
             except Exception as e:
                 if attempt < self.max_retries - 1:
-                    print(f"Embedding generation failed (attempt {attempt + 1}): {e}")
+                    logger.info(f"Embedding generation failed (attempt {attempt + 1}): {e}")
                     await asyncio.sleep(1 * (attempt + 1))
                     continue
                 else:

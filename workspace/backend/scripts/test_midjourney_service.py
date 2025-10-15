@@ -2,7 +2,7 @@
 Test script for Midjourney Service
 """
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.midjourney_service import midjourney_service, MidjourneyServiceError
 
 async def test_midjourney_service():
@@ -193,7 +193,7 @@ async def test_api_endpoints():
 async def main():
     """Run all Midjourney service tests"""
     print("🚀 Starting Midjourney Service Test Suite")
-    print(f"Started at: {datetime.utcnow().isoformat()}")
+    print(f"Started at: {datetime.now(timezone.utc).isoformat()}")
     
     await test_midjourney_service()
     await test_celery_integration()
@@ -214,7 +214,7 @@ async def main():
     print("   3. Ensure Redis is running for caching")
     print("   4. Run tests again for full functionality")
     
-    print(f"\n🎉 Test completed at {datetime.utcnow().isoformat()}")
+    print(f"\n🎉 Test completed at {datetime.now(timezone.utc).isoformat()}")
 
 if __name__ == "__main__":
     asyncio.run(main())

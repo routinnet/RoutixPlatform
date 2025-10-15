@@ -6,7 +6,7 @@ import asyncio
 import json
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 from celery import current_task
 from app.workers.celery_app import celery_app
@@ -50,7 +50,7 @@ def generate_thumbnail_task(self, request_id: str) -> Dict[str, Any]:
     start_time = time.time()
     
     try:
-        logger.info(f"[{datetime.utcnow()}] Starting generation pipeline for request: {request_id}")
+        logger.info(f"[{datetime.now(timezone.utc)}] Starting generation pipeline for request: {request_id}")
         
         # Step 1: Load generation request (5%)
         logger.info(f"Step 1: Loading generation request {request_id}")
@@ -107,7 +107,7 @@ def generate_thumbnail_task(self, request_id: str) -> Dict[str, Any]:
         ))
         asyncio.run(broadcast_progress(request_id, 100, "completed", "Your thumbnail is ready! 🎉"))
         
-        logger.info(f"[{datetime.utcnow()}] Generation pipeline completed successfully: {request_id}")
+        logger.info(f"[{datetime.now(timezone.utc)}] Generation pipeline completed successfully: {request_id}")
         
         return {
             "request_id": request_id,
@@ -571,7 +571,7 @@ async def finalize_generation(
         update_data = {
             "status": "completed",
             "progress": 100,
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
             "result": {
                 "image_url": final_url,
                 "processing_time": processing_time,
@@ -622,7 +622,7 @@ async def broadcast_progress(request_id: str, progress: int, status: str, messag
             "progress": progress,
             "status": status,
             "message": message,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         # Broadcast to Redis pub/sub for real-time updates
@@ -651,7 +651,7 @@ async def handle_generation_failure(request_id: str, error_message: str) -> None
             "status": "failed",
             "progress": 0,
             "error": error_message,
-            "failed_at": datetime.utcnow().isoformat()
+            "failed_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Get original request data

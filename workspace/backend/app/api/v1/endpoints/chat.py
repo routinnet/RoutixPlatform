@@ -231,7 +231,7 @@ async def search_conversations(
 @router.get("/conversations/{conversation_id}/export", response_model=Dict[str, Any])
 async def export_conversation(
     conversation_id: str,
-    format: str = Query("json", regex="^(json|txt|pdf)$", description="Export format"),
+    format: str = Query("json", pattern="^(json|txt|pdf)$", description="Export format"),
     include_metadata: bool = Query(True, description="Include metadata in export"),
     current_user: User = Depends(get_current_user)
 ):
@@ -394,7 +394,7 @@ async def remove_participant(
 
 @router.get("/analytics/summary", response_model=Dict[str, Any])
 async def get_chat_analytics(
-    timeframe: str = Query("week", regex="^(day|week|month|all)$"),
+    timeframe: str = Query("week", pattern="^(day|week|month|all)$"),
     current_user: User = Depends(get_current_user)
 ):
     """
