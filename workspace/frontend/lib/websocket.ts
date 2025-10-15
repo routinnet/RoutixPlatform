@@ -116,7 +116,7 @@ class WebSocketManager {
     this.listeners.get(event)?.delete(callback)
   }
 
-  private emit(event: string, data: any) {
+  private emit(event: string, data: unknown) {
     this.listeners.get(event)?.forEach(callback => {
       try {
         callback(data)

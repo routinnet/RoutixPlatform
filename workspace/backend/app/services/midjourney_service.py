@@ -43,7 +43,7 @@ class MidjourneyService:
         self.default_stylize = 750
         
         if not self.goapi_api_key and not self.useapi_api_key:
-            logger.info("Warning: Neither GOAPI_API_KEY nor USEAPI_API_KEY configured")
+            logger.warning("Neither GOAPI_API_KEY nor USEAPI_API_KEY configured")
     
     async def generate_thumbnail(
         self,

@@ -20,7 +20,7 @@ class EmbeddingService:
             self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             self.openai_client = None
-            logger.info("Warning: OPENAI_API_KEY not configured for embeddings")
+            logger.warning("OPENAI_API_KEY not configured for embeddings")
         
         self.model = "text-embedding-3-small"
         self.max_retries = 3

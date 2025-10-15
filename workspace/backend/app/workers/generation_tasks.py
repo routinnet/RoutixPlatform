@@ -8,6 +8,10 @@ from celery import current_task
 from app.workers.celery_app import celery_app
 from app.services.midjourney_service import midjourney_service, MidjourneyServiceError
 from app.services.ai_service import vision_ai_service, embedding_service
+from app.services.redis_service import redis_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 @celery_app.task(bind=True, name="app.workers.generation_tasks.generate_thumbnail_with_midjourney")
 def generate_thumbnail_with_midjourney(
@@ -26,7 +30,7 @@ def generate_thumbnail_with_midjourney(
         user_logo_url = generation_request.get('user_logo_url')
         custom_text = generation_request.get('custom_text')
         
-        print(f"[{datetime.now(timezone.utc)}] Starting Midjourney generation for request {request_id}")
+        logger.info(f"Starting Midjourney generation for request {request_id}")
         
         # Update progress
         if current_task:
@@ -56,7 +60,7 @@ def generate_thumbnail_with_midjourney(
                 )
                 
                 if not template_analysis:
-                    print(f"Template analysis not found for {template_id}, skipping style reference")
+                    logger.info(f"Template analysis not found for {template_id}, skipping style reference")
             
             # Step 2: Generate with Midjourney
             if current_task:
@@ -106,7 +110,7 @@ def generate_thumbnail_with_midjourney(
                     meta={'progress': 100, 'message': 'Generation complete', 'status': 'completed'}
                 )
             
-            print(f"[{datetime.now(timezone.utc)}] Midjourney generation completed for request {request_id}")
+            logger.info(f"Midjourney generation completed for request {request_id}")
             return final_result
             
         finally:
@@ -114,7 +118,7 @@ def generate_thumbnail_with_midjourney(
         
     except MidjourneyServiceError as e:
         error_msg = f"Midjourney generation failed for request {request_id}: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.error(error_msg)
         
         # Retry logic for certain errors
         if "timeout" in str(e).lower() or "queue" in str(e).lower():
@@ -131,7 +135,7 @@ def generate_thumbnail_with_midjourney(
     
     except Exception as e:
         error_msg = f"Unexpected error in Midjourney generation for request {request_id}: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.error(error_msg)
         
         return {
             'request_id': request_id,
@@ -152,7 +156,7 @@ def upscale_thumbnail(
     Upscale a generated thumbnail
     """
     try:
-        print(f"[{datetime.now(timezone.utc)}] Starting thumbnail upscale for task {task_id}")
+        logger.info(f"Starting thumbnail upscale for task {task_id}")
         
         # Update progress
         if current_task:
@@ -189,7 +193,7 @@ def upscale_thumbnail(
                 'completed_at': datetime.now(timezone.utc).isoformat()
             }
             
-            print(f"[{datetime.now(timezone.utc)}] Thumbnail upscale completed for task {task_id}")
+            logger.info(f"Thumbnail upscale completed for task {task_id}")
             return result
             
         finally:
@@ -197,7 +201,7 @@ def upscale_thumbnail(
         
     except MidjourneyServiceError as e:
         error_msg = f"Thumbnail upscale failed for task {task_id}: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.error(error_msg)
         
         return {
             'original_task_id': task_id,
@@ -209,7 +213,7 @@ def upscale_thumbnail(
     
     except Exception as e:
         error_msg = f"Unexpected error in thumbnail upscale for task {task_id}: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.error(error_msg)
         
         return {
             'original_task_id': task_id,
@@ -228,7 +232,7 @@ def batch_generate_thumbnails(
     Generate multiple thumbnails in batch
     """
     try:
-        print(f"[{datetime.now(timezone.utc)}] Starting batch Midjourney generation for {len(generation_requests)} requests")
+        logger.info(f"Starting batch Midjourney generation for {len(generation_requests)} requests")
         
         results = []
         total_requests = len(generation_requests)
@@ -261,7 +265,7 @@ def batch_generate_thumbnails(
                 })
                 
             except Exception as e:
-                print(f"[{datetime.now(timezone.utc)}] Failed to generate thumbnail for request {request_id}: {str(e)}")
+                logger.error(f"Failed to generate thumbnail for request {request_id}: {str(e)}")
                 results.append({
                     'request_id': request_id,
                     'status': 'failed',
@@ -277,9 +281,9 @@ def batch_generate_thumbnails(
             'completed_at': datetime.now(timezone.utc).isoformat()
         }
         
-        print(f"[{datetime.now(timezone.utc)}] Batch Midjourney generation completed: {batch_result['successful']}/{total_requests} successful")
+        logger.info(f"Batch Midjourney generation completed: {batch_result['successful']}/{total_requests} successful")
         return batch_result
         
     except Exception as e:
-        print(f"[{datetime.now(timezone.utc)}] Batch Midjourney generation failed: {str(e)}")
+        logger.error(f"Batch Midjourney generation failed: {str(e)}")
         raise self.retry(exc=e, countdown=180, max_retries=2)

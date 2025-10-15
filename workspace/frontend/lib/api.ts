@@ -1,5 +1,19 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { toast } from 'sonner'
+import type {
+  RegisterData,
+  LoginCredentials,
+  UpdateProfileData,
+  SendMessageData,
+  CreateGenerationData,
+  GenerationHistoryParams,
+  TemplateQueryParams,
+  UpdateTemplateData,
+  ShareGenerationData,
+  AdminUserParams,
+  UpdateUserData,
+  AnalyticsParams,
+} from './types'
 
 const FALLBACK_API_URL = 'http://localhost:8000'
 const LOGIN_ROUTE = '/login'
@@ -150,53 +164,53 @@ api.interceptors.response.use(
 // API Methods
 export const apiClient = {
   // Auth
-  register: (data: any) => api.post('/api/v1/users/register', data),
-  login: (credentials: any) => api.post('/api/v1/users/login', credentials),
+  register: (data: RegisterData) => api.post('/api/v1/users/register', data),
+  login: (credentials: LoginCredentials) => api.post('/api/v1/users/login', credentials),
   
   // User
   getProfile: () => api.get('/api/v1/users/profile'),
-  updateProfile: (data: any) => api.put('/api/v1/users/profile', data),
+  updateProfile: (data: UpdateProfileData) => api.put('/api/v1/users/profile', data),
   getCredits: () => api.get('/api/v1/users/credits'),
   
   // Chat
   getConversations: () => api.get('/api/v1/chat/conversations'),
   createConversation: () => api.post('/api/v1/chat/conversations'),
   getMessages: (id: string) => api.get(`/api/v1/chat/conversations/${id}/messages`),
-  sendMessage: (id: string, message: any) => 
+  sendMessage: (id: string, message: SendMessageData) => 
     api.post(`/api/v1/chat/conversations/${id}/messages`, message),
   
   // Generation
   getAlgorithms: () => api.get('/api/v1/generation/algorithms'),
-  createGeneration: (data: any) => api.post('/api/v1/generation/create', data),
+  createGeneration: (data: CreateGenerationData) => api.post('/api/v1/generation/create', data),
   getGenerationStatus: (id: string) => api.get(`/api/v1/generation/${id}/status`),
   getGenerationResult: (id: string) => api.get(`/api/v1/generation/${id}/result`),
-  getHistory: (params?: any) => api.get('/api/v1/generations/user', { params }),
+  getHistory: (params?: GenerationHistoryParams) => api.get('/api/v1/generations/user', { params }),
   
   // Templates
   uploadTemplate: (formData: FormData) =>
     api.post('/api/v1/templates/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  getTemplates: (params?: any) => api.get('/api/v1/templates', { params }),
+  getTemplates: (params?: TemplateQueryParams) => api.get('/api/v1/templates', { params }),
   searchTemplates: (query: string) => 
     api.get('/api/v1/templates/search', { params: { query } }),
   deleteTemplate: (id: string) => api.delete(`/api/v1/templates/${id}`),
-  updateTemplate: (id: string, data: any) => api.put(`/api/v1/templates/${id}`, data),
+  updateTemplate: (id: string, data: UpdateTemplateData) => api.put(`/api/v1/templates/${id}`, data),
   
   // Gallery & History
   downloadGeneration: (id: string) => api.get(`/api/v1/generations/${id}/download`, {
     responseType: 'blob'
   }),
-  shareGeneration: (id: string, data: any) => api.post(`/api/v1/generations/${id}/share`, data),
+  shareGeneration: (id: string, data: ShareGenerationData) => api.post(`/api/v1/generations/${id}/share`, data),
   favoriteGeneration: (id: string) => api.post(`/api/v1/generations/${id}/favorite`),
   unfavoriteGeneration: (id: string) => api.delete(`/api/v1/generations/${id}/favorite`),
   deleteGeneration: (id: string) => api.delete(`/api/v1/generations/${id}`),
   
   // Admin APIs
   getAdminStats: () => api.get('/api/v1/admin/stats'),
-  getUsers: (params?: any) => api.get('/api/v1/admin/users', { params }),
-  updateUser: (id: string, data: any) => api.put(`/api/v1/admin/users/${id}`, data),
-  getAnalytics: (params?: any) => api.get('/api/v1/admin/analytics', { params }),
+  getUsers: (params?: AdminUserParams) => api.get('/api/v1/admin/users', { params }),
+  updateUser: (id: string, data: UpdateUserData) => api.put(`/api/v1/admin/users/${id}`, data),
+  getAnalytics: (params?: AnalyticsParams) => api.get('/api/v1/admin/analytics', { params }),
   getRecentActivity: () => api.get('/api/v1/admin/activity'),
 }
 
