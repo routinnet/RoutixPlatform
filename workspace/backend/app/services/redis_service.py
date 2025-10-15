@@ -154,6 +154,43 @@ class RedisService:
             logger.info(f"Redis lrange failed for {name}: {e}")
             return []
     
+    async def lrem(self, name: str, value: Any, count: int = 0) -> int:
+        """Remove elements from list"""
+        try:
+            serialized_value = json.dumps(value, default=str)
+            return self.redis_client.lrem(name, count, serialized_value)
+        except Exception as e:
+            logger.info(f"Redis lrem failed for {name}: {e}")
+            return 0
+    
+    # Set operations
+    async def sadd(self, name: str, *values: Any) -> int:
+        """Add values to set"""
+        try:
+            serialized_values = [json.dumps(v, default=str) for v in values]
+            return self.redis_client.sadd(name, *serialized_values)
+        except Exception as e:
+            logger.info(f"Redis sadd failed for {name}: {e}")
+            return 0
+    
+    async def srem(self, name: str, *values: Any) -> int:
+        """Remove values from set"""
+        try:
+            serialized_values = [json.dumps(v, default=str) for v in values]
+            return self.redis_client.srem(name, *serialized_values)
+        except Exception as e:
+            logger.info(f"Redis srem failed for {name}: {e}")
+            return 0
+    
+    async def smembers(self, name: str) -> List[Any]:
+        """Get all members of set"""
+        try:
+            values = self.redis_client.smembers(name)
+            return [json.loads(v) for v in values] if values else []
+        except Exception as e:
+            logger.info(f"Redis smembers failed for {name}: {e}")
+            return []
+    
     # Pub/Sub operations
     async def publish(self, channel: str, message: Dict[str, Any]) -> int:
         """Publish message to channel"""
