@@ -18,6 +18,9 @@ from app.core.config import settings
 from app.core.database import engine
 from app.api.v1.api import api_router
 from app.core.exceptions import RouxixException
+from app.middleware.error_handler import register_all_handlers
+from app.middleware.rate_limiter import create_rate_limiter_middleware
+from app.services.redis_service import redis_service
 
 
 # Configure logging
@@ -78,6 +81,18 @@ app.add_middleware(
 )
 
 
+# Register comprehensive error handling middleware
+register_all_handlers(app)
+
+
+# Register rate limiting middleware
+try:
+    create_rate_limiter_middleware(app, redis_service.redis)
+    logger.info("Rate limiting middleware enabled")
+except Exception as e:
+    logger.warning(f"Rate limiting disabled - Redis not available: {e}")
+
+
 # Request timing middleware
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
@@ -88,33 +103,6 @@ async def add_process_time_header(request: Request, call_next):
     process_time = time.perf_counter() - start_time
     response.headers["X-Process-Time"] = f"{process_time:.6f}"
     return response
-
-
-# Exception handlers
-@app.exception_handler(RouxixException)
-async def routix_exception_handler(request: Request, exc: RouxixException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": exc.error_code,
-            "message": exc.message,
-            "details": exc.details
-        }
-    )
-
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Fallback handler for uncaught exceptions."""
-
-    logger.exception("Unhandled exception during request")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "INTERNAL_SERVER_ERROR",
-            "message": "An internal server error occurred"
-        }
-    )
 
 
 # Health check endpoints
