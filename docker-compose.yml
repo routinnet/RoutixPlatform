@@ -1,0 +1,205 @@
+# ==========================================
+# Routix Platform - Docker Compose Configuration
+# ==========================================
+# Complete stack for local development and testing
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database with pgvector
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: routix_postgres
+    environment:
+      POSTGRES_USER: routix
+      POSTGRES_PASSWORD: routix_dev_password
+      POSTGRES_DB: routix_db
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U routix"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - routix_network
+
+  # Redis for caching and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: routix_redis
+    command: redis-server --appendonly yes --requirepass routix_redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - routix_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./workspace/backend
+      dockerfile: Dockerfile.dev
+    container_name: routix_backend
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://routix:routix_dev_password@postgres:5432/routix_db
+      - REDIS_URL=redis://:routix_redis_password@redis:6379/0
+      - CELERY_BROKER_URL=redis://:routix_redis_password@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:routix_redis_password@redis:6379/2
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOAPI_API_KEY=${GOAPI_API_KEY}
+      - USEAPI_API_KEY=${USEAPI_API_KEY}
+      - STORAGE_TYPE=local
+      - UPLOAD_DIR=/app/uploads
+      - BACKEND_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - SECRET_KEY=dev-secret-key-change-in-production
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./workspace/backend:/app
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - routix_network
+
+  # Celery Worker for background tasks
+  celery_worker:
+    build:
+      context: ./workspace/backend
+      dockerfile: Dockerfile.dev
+    container_name: routix_celery_worker
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://routix:routix_dev_password@postgres:5432/routix_db
+      - REDIS_URL=redis://:routix_redis_password@redis:6379/0
+      - CELERY_BROKER_URL=redis://:routix_redis_password@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:routix_redis_password@redis:6379/2
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOAPI_API_KEY=${GOAPI_API_KEY}
+      - USEAPI_API_KEY=${USEAPI_API_KEY}
+      - STORAGE_TYPE=local
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - ./workspace/backend:/app
+      - backend_uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    networks:
+      - routix_network
+
+  # Celery Beat for scheduled tasks
+  celery_beat:
+    build:
+      context: ./workspace/backend
+      dockerfile: Dockerfile.dev
+    container_name: routix_celery_beat
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+asyncpg://routix:routix_dev_password@postgres:5432/routix_db
+      - REDIS_URL=redis://:routix_redis_password@redis:6379/0
+      - CELERY_BROKER_URL=redis://:routix_redis_password@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:routix_redis_password@redis:6379/2
+    volumes:
+      - ./workspace/backend:/app
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    networks:
+      - routix_network
+
+  # Frontend (Optional - uncomment if you want to run frontend in Docker)
+  # frontend:
+  #   build:
+  #     context: ./workspace/frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: routix_frontend
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./workspace/frontend:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - routix_network
+
+  # PgAdmin for database management (Optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: routix_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@routix.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - routix_network
+    profiles:
+      - tools
+
+  # Redis Commander for Redis management (Optional)
+  redis_commander:
+    image: rediscommander/redis-commander:latest
+    container_name: routix_redis_commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:routix_redis_password
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - routix_network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  routix_network:
+    driver: bridge

@@ -32,7 +32,7 @@ class EmbeddingService:
             self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             self.openai_client = None
-            logger.info("Warning: OPENAI_API_KEY not configured for embeddings")
+            logger.warning("OPENAI_API_KEY not configured for embeddings")
         
         self.model = settings.EMBEDDING_MODEL
         self.dimensions = settings.EMBEDDING_DIMENSIONS
@@ -256,14 +256,14 @@ class VisionAIService:
             self.gemini_model = genai.GenerativeModel('gemini-pro-vision')
         else:
             self.gemini_model = None
-            logger.info("Warning: GEMINI_API_KEY not configured")
+            logger.warning("GEMINI_API_KEY not configured")
         
         # Configure OpenAI
         if hasattr(settings, 'OPENAI_API_KEY') and settings.OPENAI_API_KEY:
             self.openai_client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
         else:
             self.openai_client = None
-            logger.info("Warning: OPENAI_API_KEY not configured")
+            logger.warning("OPENAI_API_KEY not configured")
         
         self.max_retries = 3
         self.retry_delay = 1
