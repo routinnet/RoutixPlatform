@@ -6,6 +6,9 @@ from celery import Celery
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Initialize Celery app
 celery_app = Celery(
@@ -240,17 +243,17 @@ class BaseTask(celery_app.Task):
     
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """Handle task failure"""
-        print(f'Task {task_id} failed: {exc}')
+        logger.error(f'Task {task_id} failed: {exc}')
         # In production: send alerts, log to monitoring system
     
     def on_success(self, retval, task_id, args, kwargs):
         """Handle task success"""
-        print(f'Task {task_id} succeeded')
+        logger.info(f'Task {task_id} succeeded')
         # In production: update metrics, log success
     
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """Handle task retry"""
-        print(f'Task {task_id} retrying: {exc}')
+        logger.warning(f'Task {task_id} retrying: {exc}')
         # In production: log retry attempts
 
 # Set custom base task
@@ -260,7 +263,7 @@ celery_app.Task = BaseTask
 @celery_app.task(bind=True)
 def debug_task(self):
     """Debug task for testing Celery configuration"""
-    print(f'Request: {self.request!r}')
+    logger.debug(f'Request: {self.request!r}')
     return 'Debug task completed successfully'
 
 # Worker startup configuration

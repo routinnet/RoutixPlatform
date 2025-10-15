@@ -8,6 +8,9 @@ from celery import current_task
 from app.workers.celery_app import celery_app
 from app.services.ai_service import vision_ai_service, AIServiceError
 from app.services.embedding_service import embedding_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 @celery_app.task(bind=True, name="app.workers.ai_tasks.analyze_template_task")
 def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, Any]:
@@ -15,7 +18,7 @@ def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, A
     Celery task for template analysis using AI vision
     """
     try:
-        print(f"[{datetime.now(timezone.utc)}] Starting AI analysis for template {template_id}")
+        logger.info(f"Starting AI analysis for template {template_id}")
         
         # Update progress
         if current_task:
@@ -68,7 +71,7 @@ def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, A
                 'completed_at': datetime.now(timezone.utc).isoformat()
             }
             
-            print(f"[{datetime.now(timezone.utc)}] AI analysis completed for template {template_id}")
+            logger.info(f"AI analysis completed for template {template_id}")
             return result
             
         finally:
@@ -76,7 +79,7 @@ def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, A
         
     except AIServiceError as e:
         error_msg = f"AI analysis failed for template {template_id}: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.info(f"{error_msg}")
         
         # Retry logic
         if self.request.retries < 2:
@@ -91,7 +94,7 @@ def analyze_template_task(self, template_id: str, image_url: str) -> Dict[str, A
     
     except Exception as e:
         error_msg = f"Unexpected error in AI analysis for template {template_id}: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.info(f"{error_msg}")
         
         return {
             'template_id': template_id,
@@ -106,7 +109,7 @@ def generate_embedding_task(text: str, cache_key: str = None) -> Dict[str, Any]:
     Celery task for generating text embeddings
     """
     try:
-        print(f"[{datetime.now(timezone.utc)}] Generating embedding for text (length: {len(text)})")
+        logger.info(f"Generating embedding for text (length: {len(text)})")
         
         # Run async embedding generation
         loop = asyncio.new_event_loop()
@@ -125,7 +128,7 @@ def generate_embedding_task(text: str, cache_key: str = None) -> Dict[str, Any]:
                 'generated_at': datetime.now(timezone.utc).isoformat()
             }
             
-            print(f"[{datetime.now(timezone.utc)}] Embedding generation completed")
+            logger.info(f"Embedding generation completed")
             return result
             
         finally:
@@ -133,7 +136,7 @@ def generate_embedding_task(text: str, cache_key: str = None) -> Dict[str, Any]:
         
     except Exception as e:
         error_msg = f"Embedding generation failed: {str(e)}"
-        print(f"[{datetime.now(timezone.utc)}] {error_msg}")
+        logger.info(f"{error_msg}")
         
         return {
             'status': 'failed',
@@ -147,7 +150,7 @@ def batch_analyze_templates_task(self, template_batch: list) -> Dict[str, Any]:
     Celery task for batch template analysis
     """
     try:
-        print(f"[{datetime.now(timezone.utc)}] Starting batch AI analysis for {len(template_batch)} templates")
+        logger.info(f"Starting batch AI analysis for {len(template_batch)} templates")
         
         results = []
         total_templates = len(template_batch)
@@ -181,7 +184,7 @@ def batch_analyze_templates_task(self, template_batch: list) -> Dict[str, Any]:
                 })
                 
             except Exception as e:
-                print(f"[{datetime.now(timezone.utc)}] Failed to analyze template {template_id}: {str(e)}")
+                logger.info(f"Failed to analyze template {template_id}: {str(e)}")
                 results.append({
                     'template_id': template_id,
                     'status': 'failed',
@@ -197,9 +200,9 @@ def batch_analyze_templates_task(self, template_batch: list) -> Dict[str, Any]:
             'completed_at': datetime.now(timezone.utc).isoformat()
         }
         
-        print(f"[{datetime.now(timezone.utc)}] Batch AI analysis completed: {batch_result['successful']}/{total_templates} successful")
+        logger.info(f"Batch AI analysis completed: {batch_result['successful']}/{total_templates} successful")
         return batch_result
         
     except Exception as e:
-        print(f"[{datetime.now(timezone.utc)}] Batch AI analysis failed: {str(e)}")
+        logger.info(f"Batch AI analysis failed: {str(e)}")
         raise self.retry(exc=e, countdown=120, max_retries=2)

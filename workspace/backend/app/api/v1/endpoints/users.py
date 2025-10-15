@@ -8,7 +8,9 @@ from pydantic import BaseModel, EmailStr
 from app.services.user_service import user_service, UserServiceError, UserRole, SubscriptionTier
 from app.core.dependencies import get_current_user
 from app.schemas.user import User
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 class UserRegistrationRequest(BaseModel):
@@ -278,7 +280,7 @@ async def request_password_reset(email: EmailStr):
             await redis_service.set(f"reset:{reset_token}", user_id, 3600)  # 1 hour
             
             # In real implementation, send email with reset link
-            print(f"Password reset token for {email}: {reset_token}")
+            logger.info(f"Password reset token for {email}: {reset_token}")
         
         # Always return success to prevent email enumeration
         return {
